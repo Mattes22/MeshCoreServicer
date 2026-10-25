@@ -64,7 +64,7 @@ final class RepeaterToolsModelTests: XCTestCase {
         }
     }
     @MainActor private func fixture() -> (AppModel,ToolsTransport) {
-        let t = ToolsTransport(), model = AppModel(ble:BluetoothTransport(startImmediately:false),transport:t)
+        let t = ToolsTransport(), model = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false),transport:t)
         let c = Contact(key:Data(repeating:0xab,count:32),kind:2,name:"Test",stored:true)
         model.contacts = [c]; model.selectedID = c.id; model.initialized = true; model.adminID = c.id
         model.chooseSetupProfile(czech:true); model.tools.communitySyncClock = true

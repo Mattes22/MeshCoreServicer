@@ -16,6 +16,7 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
     let preferences: AppPreferences
     let notifications: NotificationCoordinator
     let library: WorkspaceLibrary
+    var applyingMeasurementOptions = false
     var initialDeviceOptions: DevicePreferences
     var requestedProfileID: String?
     var consoleAccount: String?
@@ -24,7 +25,9 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
     var openMainWindow: (() -> Void)?
     @Published var showMessagesRequested = false
     @Published var monitoring = false
-    @Published var monitorIntervalMinutes = 15 { didSet { saveProfilePreferences() } }
+    @Published var monitorSampleLimit = 3 { didSet { saveProfilePreferences() } }
+    @Published var measurement: DiagnosticMeasurement?
+    @Published var monitorIntervalMinutes = 30 { didSet { saveProfilePreferences() } }
     @Published var monitorNext: Date?
     @Published var restorePreview: SnapshotComparison?
     var monitorTask: Task<Void,Never>?
@@ -69,7 +72,7 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
     var knownSecrets: Set<String> = []
     struct Confirmation: Identifiable { let id = UUID(); let title: String; let message: String; let action: () -> Void }
     var selected: Contact? { contacts.first { $0.id == selectedID } }
-    var admin: Bool { adminID != nil && adminID == selectedID && initialized }
+    var admin: Bool { adminID != nil && adminID == selectedID && initialized && !session.requiresReconnect }
     var dirtyKeys: [String] { CLIValidation.keys.filter { isDirty($0) } }
     func isDirty(_ key: String) -> Bool {
         guard let actual = config[key], let draft = edits[key] else { return false }
@@ -84,7 +87,7 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
         } else { action() }
     }
     convenience init() { self.init(ble:BluetoothTransport(),archive:ChatArchive.applicationArchive(),operationsArchive:OperationsArchive.applicationArchive(),preferences:AppPreferences(defaults:.standard),notifications:NotificationCoordinator(systemEnabled:true),library:WorkspaceLibrary(defaults:.standard)) }
-    init(ble: BluetoothTransport, transport: MeshTransport? = nil, archive: ChatArchive? = nil, operationsArchive: OperationsArchive? = nil, preferences: AppPreferences? = nil, notifications: NotificationCoordinator? = nil, library: WorkspaceLibrary? = nil) {
+    init(traffic: ServiceTrafficGovernor? = nil, ble: BluetoothTransport, transport: MeshTransport? = nil, archive: ChatArchive? = nil, operationsArchive: OperationsArchive? = nil, preferences: AppPreferences? = nil, notifications: NotificationCoordinator? = nil, library: WorkspaceLibrary? = nil) {
         self.ble = ble
         self.operations = OperationsModel(archive:operationsArchive)
         self.preferences = preferences ?? AppPreferences()
@@ -92,7 +95,7 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
         self.library = library ?? WorkspaceLibrary()
         self.initialDeviceOptions = self.preferences.deviceOptions
         self.messages = MessagesModel(archive:archive)
-        self.session = MeshSession(transport:transport ?? ble)
+        self.session = MeshSession(traffic:traffic,transport:transport ?? ble)
         self.preferences.onProfileChange = { [weak self] in self?.saveProfilePreferences() }
         self.preferences.$autoReconnect.sink { [weak ble] value in ble?.automaticReconnect = value }.store(in:&subscriptions)
         self.messages.$records.sink { [weak self] records in
@@ -150,10 +153,18 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
     func log(_ text: String, level: LogLevel = .info) { logs.append(LogLine(text:text,level:level)); if logs.count > 2000 { logs.removeFirst(logs.count-2000) } }
     func clean(_ text: String) -> String { knownSecrets.filter { !$0.isEmpty }.reduce(text) { $0.replacingOccurrences(of:$1, with:"[skryto]") } }
     func perform(_ title: String, _ action: @escaping () async throws -> Void) {
-        guard !busy else { return }; busy = true; progress = title; error = nil; notice = nil; completedSteps = 0; totalSteps = 0
-        Task { defer { busy = false }
-            do { try await action(); progress = "Dokončeno" }
-            catch { let message = clean(error.localizedDescription); self.error = message; progress = "Operace selhala"; log("Operace selhala; podrobnosti jsou zobrazeny v aplikaci.", level:.error) }
+        guard !busy else { error = "Probíhá jiná operace. Požadavek nebyl zařazen do fronty."; return }; busy = true; progress = title; error = nil; notice = nil; completedSteps = 0; totalSteps = 0
+        Task { [self] in defer { busy = false }
+            let generation = connectionGeneration, target = selectedID, wasAdmin = admin
+            do {
+                try session.beginServiceOperation { [weak self] in
+                    guard let self else { return false }
+                    return self.connectionGeneration == generation && self.selectedID == target && (!wasAdmin || self.admin)
+                }
+                defer { session.endServiceOperation() }
+                try await action(); progress = "Dokončeno"
+            }
+            catch { stopMonitoring(); let message = clean(error.localizedDescription); self.error = message; progress = "Operace selhala"; log("Operace selhala; podrobnosti jsou zobrazeny v aplikaci.", level:.error) }
         }
     }
     func event(_ frame: Frame) {
@@ -161,6 +172,8 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
         case .selfInfo(let s):
             guard activateProfile(s) else { return }; selfInfo = s
         case .deviceInfo(let d): deviceInfo = d
+        case .login(let prefix, let permissions) where selected?.key.prefix(6) == prefix && permissions & 1 == 0: adminID = nil
+        case .loginFailed(let prefix) where selected?.key.prefix(6) == prefix: adminID = nil
         case .battery(let b): battery = b
         case .contactsStart: contacts.removeAll { $0.stored }
         case .contact(let c):
@@ -207,10 +220,11 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
         guard (deviceInfo?.protocolVersion ?? 0) >= 8 else { error = "Discovery vyžaduje companion protokol v8+."; return }
         guard !busy else { return }
         let tag = UInt32.random(in:1...UInt32.max); discoveryTag = tag; discoveryUntil = Date().addingTimeInterval(30); discoveryEnds = discoveryUntil
-        perform("Odesílám zero-hop discovery repeaterů…") { try await self.session.discover(tag:tag); self.log("Companion přijal zero-hop discovery. Odpovědi přijímám 30 sekund; žádná odpověď neznamená neověřenou dostupnost.") }
+        perform("Odesílám zero-hop discovery repeaterů…") { try await self.session.discover(tag:tag,onSend:{ self.discoveryUntil = Date().addingTimeInterval(30); self.discoveryEnds = self.discoveryUntil }); self.log("Companion přijal zero-hop discovery. Odpovědi přijímám 30 sekund; žádná odpověď neznamená neověřenou dostupnost.") }
     }
     func login() {
-        guard let c = selected, c.stored else { return }
+        guard !busy, let c = selected, c.stored else { return }
+        adminID = nil
         let secret = password; knownSecrets.insert(secret); password = ""
         perform("Přihlašuji správce repeateru…") {
             let permissions = try await self.session.login(key:c.key, password:secret)

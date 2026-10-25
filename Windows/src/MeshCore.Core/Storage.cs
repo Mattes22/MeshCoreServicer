@@ -32,7 +32,10 @@ public sealed class DeviceOptions
     public bool History { get; set; } = true;
     public bool SuggestWrites { get; set; }
     public bool EnterSends { get; set; } = true;
-    public int MonitorMinutes { get; set; } = 15;
+    public int MonitorMinutes { get; set; } = 15; // Legacy: never schedules diagnostics.
+    public int DiagnosticMinutes { get; set; } = 30;
+    public int DiagnosticSamples { get; set; } = 3;
+    public void ValidateDiagnostic() { _ = new DiagnosticPlan(DiagnosticMinutes, DiagnosticSamples, ServiceRoute.Known); }
 }
 public sealed class CompanionProfile
 {
@@ -80,8 +83,9 @@ public sealed class LibraryDocument
     public void Validate()
     {
         if (InterfaceScale is not (100 or 115 or 130 or 150)) throw new MeshException("Neplatná velikost rozhraní.");
+        Defaults.ValidateDiagnostic();
         if (Defaults.MonitorMinutes is < 5 or > 1440 || Version != 1 || Profiles.Count > 32 || Shortcuts.Count > 128 || Evidence.Count > 1024 || Checks.Count > 256 || Profiles.Select(p => p.Account).Distinct().Count() != Profiles.Count) throw new MeshException("Neplatná knihovna nebo překročený limit.");
-        foreach (var p in Profiles) { Codec.Key(p.Account); if (p.Name.Length > 80 || p.Alias.Length > 80 || p.Options.MonitorMinutes is < 5 or > 1440) throw new MeshException("Neplatný profil."); }
+        foreach (var p in Profiles) { p.Options.ValidateDiagnostic(); Codec.Key(p.Account); if (p.Name.Length > 80 || p.Alias.Length > 80 || p.Options.MonitorMinutes is < 5 or > 1440) throw new MeshException("Neplatný profil."); }
         foreach (var s in Shortcuts) { s.Validate(); if (!Profiles.Any(p => p.Account == s.Account)) throw new MeshException("Neznámý účet zkratky."); }
         foreach (var e in Evidence) { Codec.Key(e.Account); Codec.Key(e.Repeater); if (e.Firmware.Length > 200 || !Commands.Catalog.Any(c => c.Command == e.Command)) throw new MeshException("Neplatná evidence."); }
     }

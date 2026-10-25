@@ -140,7 +140,7 @@ public sealed partial class MainWindow : Window
             if (repeaterSummary != null) repeaterSummary.Visibility = model.Node == null || LayoutPolicy.Compact(shell.ActualWidth) || shell.ActualHeight < 700 ? Visibility.Collapsed : Visibility.Visible;
             navigationCounts[1].Text = model.Contacts.Count == 0 ? "" : model.Contacts.Count.ToString(); navigationCounts[2].Text = model.Unread == 0 ? "" : model.Unread.ToString(); navigationCounts[3].Text = model.Settings.Any(f => f.Dirty) ? "●" : "";
             if (disconnectButton != null) disconnectButton.IsEnabled = ble.Ready && !connecting;
-            status.Text = (connecting ? "Připojuji…" : model.Progress) + (model.Monitoring ? $" · monitoring: další {model.NextMonitor?.LocalDateTime:t}" : "");
+            status.Text = (connecting ? "Připojuji…" : model.Progress) + (model.Monitoring ? $" · měření: další {model.NextMonitor?.LocalDateTime:t}" : "");
             progress.Visibility = model.Busy || connecting || ble.IsPairing ? Visibility.Visible : Visibility.Collapsed;
             error.Text = model.Error ?? model.StorageError ?? "";
             if (model.Session.RequiresReconnect && !error.Text.Contains("obnovte BLE", StringComparison.OrdinalIgnoreCase)) error.Text += "  Obnovte BLE relaci; zápis automaticky neopakujte.";

@@ -65,7 +65,7 @@ final class MessagesModelTests: XCTestCase {
         await model.activate(account:account); XCTAssertEqual(model.records.count,1)
     }
     @MainActor func testOrdinaryChatNeverTargetsRepeaterOrRoom() async {
-        let t = ChatTransport(), model = AppModel(ble:BluetoothTransport(startImmediately:false),transport:t)
+        let t = ChatTransport(), model = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false),transport:t)
         await model.messages.activate(account:account); model.initialized = true
         for kind: UInt8 in [2,3] {
             let c = Contact(key:Data(repeating:kind,count:32),kind:kind,name:"Not a companion",stored:true)
@@ -74,7 +74,7 @@ final class MessagesModelTests: XCTestCase {
         }
     }
     @MainActor func testSendingDMRequiresNoRepeaterAdminAndLogsNoContent() async throws {
-        let t = ChatTransport(), model = AppModel(ble:BluetoothTransport(startImmediately:false),transport:t)
+        let t = ChatTransport(), model = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false),transport:t)
         await model.messages.activate(account:account); model.initialized = true
         let c = Contact(key:Data(repeating:1,count:32),kind:1,name:"Peer",stored:true)
         model.contacts = [c]; let id = "dm:"+c.key.prefix(6).hex; model.messages.select(id); model.messages.drafts[id] = "PRIVATE TEST TEXT"

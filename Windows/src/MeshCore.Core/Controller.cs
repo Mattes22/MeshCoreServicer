@@ -9,7 +9,7 @@ public record ConsoleLine(DateTimeOffset Date, string Node, string Command, stri
 public record LogEvent(DateTimeOffset Date, string Category);
 public sealed partial class Controller : Observable
 {
-    public const string Version = "0.7.3";
+    public const string Version = "0.8.0";
     private readonly LocalStore store;
     private readonly ICredentialStore credentials;
     public readonly MeshSession Session;
@@ -41,8 +41,12 @@ public sealed partial class Controller : Observable
     public string? SelectedNode { get; private set; }
     public string? Conversation { get; private set; }
     public bool ReadingConversation { get; set; }
-    public bool Monitoring { get; private set; }
-    public DateTimeOffset? NextMonitor { get; private set; }
+    public bool Monitoring => Measurement?.Running == true;
+    public DiagnosticMeasurement? Measurement { get; private set; }
+    public ServiceRoute MeasurementRoute => Node is { } c ? Session.RouteFor(c.Key) : ServiceRoute.FloodOrUnknown;
+    public DiagnosticPlan MeasurementPlan => new(Math.Max(Options.DiagnosticMinutes, ServiceRouting.MinimumMinutes(MeasurementRoute)), Options.DiagnosticSamples, MeasurementRoute);
+    public DateTimeOffset? NextMonitor => Measurement?.Next;
+    private readonly TimeProvider measurementClock;
     public Contact? Node => Contacts.FirstOrDefault(c => c.Id == SelectedNode);
     public bool Admin => Initialized && !Session.RequiresReconnect && adminNode != null && adminNode == SelectedNode;
     public string? StorageError => store.Error;
@@ -61,9 +65,11 @@ public sealed partial class Controller : Observable
     private uint? discoveryTag;
     private DateTimeOffset discoveryUntil;
     private Task saving = Task.CompletedTask;
-    public Controller(IMeshTransport transport, ICredentialStore credentials, LocalStore? store = null, RemoteRequestPacer? pacer = null, TimeSpan? remoteTimeout = null)
+    public Controller(IMeshTransport transport, ICredentialStore credentials, LocalStore? store = null, RemoteRequestPacer? pacer = null, TimeSpan? remoteTimeout = null, TimeProvider? measurementClock = null, ServiceTrafficGovernor? traffic = null)
     {
-        this.store = store ?? new(); this.credentials = credentials; Session = new(transport, pacer: pacer, remoteTimeout: remoteTimeout);
+        this.measurementClock = measurementClock ?? TimeProvider.System;
+        this.store = store ?? new(); this.credentials = credentials; Session = new(transport, pacer: pacer, remoteTimeout: remoteTimeout, traffic: traffic);
+        Session.ServiceProgress += text => { Progress = text; Update(); };
         Session.Event += Receive; Session.CliReply += ObserveCli; Session.Malformed += () => AddLog("Odmítnut neplatný rámec");
         transport.Disconnected += Disconnected;
     }
@@ -79,12 +85,20 @@ public sealed partial class Controller : Observable
     private void Update() { Notify(null); Changed?.Invoke(); }
     private void AddLog(string category) { Log.Add(new(DateTimeOffset.UtcNow, category)); if (Log.Count > 2000) Log.RemoveAt(0); Update(); }
     public string Clean(string text) { foreach (var secret in secrets.Where(x => x.Length > 0)) text = text.Replace(secret, "[skryto]", StringComparison.Ordinal); return text; }
-    public async Task Run(string title, Func<Task> action)
+    public async Task Run(string title, Func<Task> action, Func<bool>? serviceValid = null, bool preserveAdmin = true)
     {
-        if (Busy) return; Busy = true; Progress = title; Error = null; Update();
-        try { await action(); Progress = "Dokončeno"; }
-        catch (Exception e) { Error = Clean(e.Message); Progress = "Operace selhala"; Monitoring = false; NextMonitor = null; AddLog("Operace selhala; původní text chyby se neexportuje"); }
-        finally { Busy = false; Update(); }
+        if (Busy) { Error = "Probíhá jiná operace. Požadavek nebyl zařazen do fronty."; Update(); return; }
+        Busy = true; Progress = title; Error = null; Update();
+        var generation = epoch; var target = SelectedNode; var wasAdmin = preserveAdmin && Admin; bool scope = false;
+        try
+        {
+            Session.BeginServiceOperation(() => epoch == generation && SelectedNode == target && (!wasAdmin || Admin) && serviceValid?.Invoke() != false); scope = true;
+            await action(); Progress = "Dokončeno";
+        }
+        catch (OperationCanceledException) when (serviceValid?.Invoke() == false) { Measurement?.Stop(); Progress = "Požadavek zastaven před odesláním"; }
+        catch (ServiceOperationCancelledException) { Measurement?.Stop(); Progress = "Požadavek zastaven před odesláním"; }
+        catch (Exception e) { Error = Clean(e.Message); Progress = "Operace selhala"; Measurement?.Stop(); AddLog("Operace selhala; původní text chyby se neexportuje"); }
+        finally { if (scope) Session.EndServiceOperation(); Busy = false; Update(); }
     }
     public async Task Initialize(ulong address, string? expectedIdentity = null)
     {
@@ -118,13 +132,14 @@ public sealed partial class Controller : Observable
         SetupSteps.Clear(); SetupSummary = "Prvotní nastavení zatím nebylo načtené."; Firmware = Board = Clock = ""; TelemetryText = RegionText = "Nenačteno"; Status = null; StatusRead = null; Access.Clear(); Neighbours.Clear(); Verified.Clear(); DiscoveryInfo.Clear();
         foreach (var f in Settings) { f.Actual = null; f.Draft = ""; f.State = "Nenačteno"; f.ReadAt = null; }
         foreach (var m in Archive?.Messages ?? []) if (m.Delivery is "Odesílám" or "Čekám na ACK") { m.Delivery = "Výsledek neověřený po odpojení"; m.Ack = null; m.AckDeadline = null; }
-        Monitoring = false; NextMonitor = null; liveMessages = false; syncWanted = false; observations.Clear(); earlyAcks.Clear(); contactsWanted.Clear(); discoveryTag = null; Persist(); AddLog("BLE relace ukončena; správce a monitoring zrušeny");
+        Measurement?.Stop(); liveMessages = false; syncWanted = false; observations.Clear(); earlyAcks.Clear(); contactsWanted.Clear(); discoveryTag = null; Persist(); AddLog("BLE relace ukončena; správce a diagnostické měření zrušeny");
     }
     private void Receive(Frame frame)
     {
+        if (frame.Code == 0x86 && frame.Prefix?.SequenceEqual(Node?.Key[..6] ?? []) == true || frame.Code == 0x85 && frame.Prefix?.SequenceEqual(Node?.Key[..6] ?? []) == true && ((byte)frame.Payload! & 1) == 0) { adminNode = null; Measurement?.Stop(); }
         switch (frame.Payload)
         {
-            case SelfInfo own: Self = own; break;
+            case SelfInfo own: if (Self != null && Self.Id != own.Id) { epoch = Guid.NewGuid(); Measurement?.Stop(); adminNode = null; Initialized = false; } Self = own; break;
             case DeviceInfo info: Device = info; break;
             case Contact c:
                 var old = Contacts.FirstOrDefault(x => x.Id == c.Id); if (old != null) Contacts.Remove(old);
@@ -149,7 +164,8 @@ public sealed partial class Controller : Observable
     private readonly HashSet<string> contactsWanted = [];
     public async Task Tick()
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = measurementClock.GetUtcNow();
+        await DiagnosticTick(now);
         bool dirty = false;
         foreach (var m in Archive?.Messages ?? []) if (m.AckDeadline < now && m.Delivery == "Čekám na ACK") { m.Delivery = "ACK nedorazil v limitu · výsledek neověřený"; m.AckDeadline = null; dirty = true; }
         if (dirty) { Persist(); Update(); }
@@ -159,30 +175,28 @@ public sealed partial class Controller : Observable
             var id = contactsWanted.First(); contactsWanted.Remove(id); await Run("Aktualizuji kontakt po advertu…", async () => { await Session.Contact(Codec.Key(id)); }); return;
         }
         if (syncWanted) { syncWanted = false; await Run("Přijímám frontu zpráv…", async () => { await Session.SyncMessages(); }); return; }
-        if (Monitoring && NextMonitor <= now)
-        { NextMonitor = now.AddMinutes(Options.MonitorMinutes); await Ping(); }
     }
     public async Task<bool> SelectNode(string? id)
     {
         if (Busy) return false;
         if (SelectedNode == id) return true;
         if (Settings.Any(f => f.Dirty) && !await Confirm("Zahodit rozepsané změny?", "Přepnutí repeateru odstraní neuložené návrhy; zařízení se tím nemění.")) return false;
-        SelectedNode = id; adminNode = null; Monitoring = false; NextMonitor = null; SetupSteps.Clear(); SetupSummary = "Prvotní nastavení zatím nebylo načtené."; Firmware = Board = Clock = ""; TelemetryText = RegionText = "Nenačteno"; Status = null; Access.Clear(); Neighbours.Clear();
+        SelectedNode = id; adminNode = null; Measurement?.Stop(); SetupSteps.Clear(); SetupSummary = "Prvotní nastavení zatím nebylo načtené."; Firmware = Board = Clock = ""; TelemetryText = RegionText = "Nenačteno"; Status = null; Access.Clear(); Neighbours.Clear();
         foreach (var f in Settings) { f.Actual = null; f.Draft = ""; f.State = "Nenačteno"; f.ReadAt = null; } Update(); return true;
     }
     public Task LoadContacts() => Run("Načítám kontakty companionu…", async () => { await Session.Contacts(); });
     public Task StoreContact(Contact c) => Run("Ukládám objevený kontakt…", async () => { await Session.Contacts(); if (!Contacts.Any(x => x.Id == c.Id && x.Stored)) { await Session.AddContact(c); await Session.Contact(c.Key); } });
     public Task Discover() => Run("Odesílám zero-hop discovery…", async () =>
-    { if (!Initialized || Device?.Protocol < 8) throw new MeshException("Discovery vyžaduje připojený companion protokol v8+."); discoveryTag = (uint)Random.Shared.NextInt64(1, uint.MaxValue); discoveryUntil = DateTimeOffset.UtcNow.AddSeconds(30); await Session.Discover(discoveryTag.Value); });
+    { if (!Initialized || Device?.Protocol < 8) throw new MeshException("Discovery vyžaduje připojený companion protokol v8+."); discoveryTag = (uint)Random.Shared.NextInt64(1, uint.MaxValue); discoveryUntil = DateTimeOffset.UtcNow.AddSeconds(30); await Session.Discover(discoveryTag.Value, () => discoveryUntil = DateTimeOffset.UtcNow.AddSeconds(30)); });
     public string? LoadPassword() => Node == null ? null : credentials.Load(Node.Id);
     public void ForgetPassword() { if (Node != null) credentials.Delete(Node.Id); }
     public Task Login(string password, bool remember) => Run("Přihlašuji správce repeateru…", async () =>
     {
-        var c = RequireNode(); var generation = epoch; adminNode = null; secrets.Add(password); var permissions = await Session.Login(c.Key, password);
+        var c = RequireNode(); var generation = epoch; Measurement?.Stop(); adminNode = null; secrets.Add(password); var permissions = await Session.Login(c.Key, password);
         if ((permissions & 1) == 0) throw new MeshException("Repeater neposkytl oprávnění správce.");
         StillCurrent(c, generation); adminNode = c.Id; Verified[c.Id] = DateTimeOffset.UtcNow; if (remember) credentials.Save(c.Id, password);
         Resolve("Heslo správce · ověřte přihlášením"); AddLog("Repeater potvrdil přihlášení správce");
-    });
+    }, preserveAdmin: false);
     private Contact RequireNode(bool admin = false)
     {
         if (!Initialized || Node is not { Stored: true, Kind: 2, Key.Length: 32 } c || admin && !Admin) throw new MeshException("Připojte companion, zvolte uložený repeater a případně přihlaste správce.");
@@ -199,7 +213,7 @@ public sealed partial class Controller : Observable
     public void Resolve(string key) { MutableOps().Pending.RemoveAll(c => c.Key == key); Persist(); Update(); }
     public Task Ping() => Run("Načítám provozní stav po LoRa…", async () =>
     {
-        var c = RequireNode(); var status = await Session.Status(c.Key); RecordStatus(c, status);
+        var c = RequireNode(); var generation = epoch; var status = await Session.Status(c.Key); StillCurrent(c, generation); RecordStatus(c, status);
     });
     private void RecordStatus(Contact c, RepeaterStatus status)
     {

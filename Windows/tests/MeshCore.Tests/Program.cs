@@ -35,7 +35,7 @@ internal sealed class MemoryCredentials : ICredentialStore
     public void Save(string key, string value) => Values[key] = value;
     public void Delete(string key) => Values.Remove(key);
 }
-internal static class Program
+internal static partial class Program
 {
     private static readonly byte[] Key = Enumerable.Range(0, 32).Select(x => (byte)x).ToArray();
     private static readonly string Id = Convert.ToHexStringLower(Key);
@@ -56,11 +56,11 @@ internal static class Program
     private static byte[] Contact(byte kind = 2, byte[]? key = null) => [3, .. key ?? Key, kind, 0, 255, .. new byte[64], .. Fixed("Node", 32), .. Codec.U32(123), .. Codec.U32(unchecked((uint)-12500000)), .. Codec.U32(14123456), .. Codec.U32(789)];
     private static byte[] Status() => [0x74, 0x0e, 2, 0, 0x88, 0xff, 0x9c, 0xff, .. Enumerable.Range(1, 8).SelectMany(i => Codec.U32((uint)i * 10)), 1, 0, 0xf6, 0xff, 3, 0, 4, 0, .. Codec.U32(90), .. Codec.U32(100)];
     private static void LocalReplies(Fake t) => t.Handle = frame => { switch (frame[0]) { case 22: t.Emit(Device()); break; case 1: t.Emit(Own()); break; case 20: t.Emit([12, 0x74, 0x0e]); break; case 10: t.Emit([10]); break; default: throw new Exception("Unexpected radio transmission " + frame[0]); } };
-    private static async Task<(Fake Transport, Controller Model)> Model()
-    { Fake t = new(); LocalReplies(t); Controller model = new(t, new MemoryCredentials(), pacer: new AdvancingClock().Pacer(), remoteTimeout: TimeSpan.FromMilliseconds(40)); await model.Start(); await model.Initialize(123); Assert(model.Initialized, model.Error ?? "Initialization failed"); return (t, model); }
-    private static async Task<(Fake Transport, Controller Model, List<string> Commands)> AdminModel(Func<string, string>? responder = null)
+    private static async Task<(Fake Transport, Controller Model)> Model(TimeProvider? measurementClock = null, ServiceTrafficGovernor? traffic = null)
+    { Fake t = new(); LocalReplies(t); Controller model = new(t, new MemoryCredentials(), pacer: new AdvancingClock().Pacer(), remoteTimeout: TimeSpan.FromMilliseconds(40), measurementClock: measurementClock, traffic: traffic); await model.Start(); await model.Initialize(123); Assert(model.Initialized, model.Error ?? "Initialization failed"); return (t, model); }
+    private static async Task<(Fake Transport, Controller Model, List<string> Commands)> AdminModel(Func<string, string>? responder = null, TimeProvider? measurementClock = null, ServiceTrafficGovernor? traffic = null)
     {
-        var (t, m) = await Model(); t.Emit(Contact()); await m.SelectNode(Id); List<string> commands = []; uint timestamp = 100;
+        var (t, m) = await Model(measurementClock, traffic); t.Emit(Contact()); await m.SelectNode(Id); List<string> commands = []; uint timestamp = 100;
         t.Handle = frame =>
         {
             if (frame[0] == 10) t.Emit([10]);
@@ -176,6 +176,7 @@ internal static class Program
         await Test("Radio callbacks after disconnect cannot alter prior account archive", async () => { var (t, m) = await Model(); t.Emit([18, 0, .. Fixed("Test", 32), .. new byte[16]]); t.Emit([8, 0, 1, 0, .. Codec.U32(42), .. Text("Ada: test")]); var record = m.Archive!.Messages.Single(); t.Drop(); var payload = Convert.FromHexString("37b73f19af5f8482367bdd518ba3083a1d70bc"); t.Emit([0x88, 16, 166, 0x15, 1, 0xaa, .. payload]); Equal(0, record.Forwardings); });
         await Test("Ambiguous CLI key prefix blocks transmission", async () => { var (t, m, commands) = await AdminModel(); var second = Key.ToArray(); second[31] = 255; t.Emit(Contact(2, second)); await m.SendCli("ver"); Assert(m.Error != null); Equal(0, commands.Count); });
         await Test("Switching repeater clears prior node tool results", async () => { var (t, m, _) = await AdminModel(c => c.StartsWith("region", StringComparison.Ordinal) ? "REGION-OF-FIRST-NODE" : "OK"); await m.ReadRegions(); Assert(m.RegionText.Contains("REGION-OF-FIRST-NODE")); var other = Enumerable.Repeat((byte)0xee, 32).ToArray(); t.Emit(Contact(2, other)); Assert(await m.SelectNode(Convert.ToHexStringLower(other))); Equal("Nenačteno", m.RegionText); Equal("Nenačteno", m.TelemetryText); });
+        await ServiceTrafficTests();
         System.Console.WriteLine($"\n{passed} passed, {failed} failed. No BLE or Windows runtime simulated as a hardware test."); return failed == 0 ? 0 : 1;
     }
 }

@@ -55,7 +55,7 @@ final class MessagingTests: XCTestCase {
         XCTAssertEqual(parsed,c); XCTAssertThrowsError(try MeshCodec.decode(d.prefix(49)))
     }
     @MainActor func testSyncDeliversChatAndChannelWithoutTreatingThemAsCLI() async throws {
-        let t = FakeTransport(), session = MeshSession(transport:t)
+        let t = FakeTransport(), session = MeshSession(traffic:.testing(),transport:t)
         var received: [Frame] = [], count = 0
         session.onEvent = { received.append($0) }
         t.handle = { frame in

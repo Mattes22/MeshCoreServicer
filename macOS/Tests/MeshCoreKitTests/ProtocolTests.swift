@@ -85,7 +85,7 @@ final class ProtocolTests: XCTestCase {
 }
 final class SessionTests: XCTestCase {
     @MainActor func testInitializationOnlyReadsLocalInformation() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t)
         t.handle = { frame in
             switch frame[0] {
             case 22: t.emit(Data([13,2]))
@@ -97,12 +97,12 @@ final class SessionTests: XCTestCase {
         try await s.initialize(); XCTAssertEqual(t.sent.map { $0[0] },[22,1,20])
     }
     @MainActor func testContactStreamDoesNotFinishAtStart() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t)
         t.handle = { _ in t.emit(Data([2,0,0,0,0])); t.emit(Data([0x83])); t.emit(Data([4,0,0,0,0])) }
         try await s.contacts(); XCTAssertEqual(t.sent,[Data([4])])
     }
     @MainActor func testLoginIgnoresOtherNodeAndAcceptsEarlyPush() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t), key=Data(0..<32)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t), key=Data(0..<32)
         t.handle = { _ in
             t.emit(Data([0x85,1])+Data(repeating:99,count:6))
             t.emit(Data([0x85,1])+key.prefix(6)) // may arrive before SENT
@@ -112,12 +112,12 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(permissions,1)
     }
     @MainActor func testLoginFailure() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t), key=Data(0..<32)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t), key=Data(0..<32)
         t.handle = { _ in t.emit(Data([6,0,0,0,0,0,0,0,0,0])); t.emit(Data([0x86,0])+key.prefix(6)) }
         do { _ = try await s.login(key:key,password:"wrong"); XCTFail() } catch { XCTAssertTrue(error.localizedDescription.contains("odmítl")) }
     }
     @MainActor func testCLIIsPolledAndOnlyMatchesCorrectSenderAndType() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t), key=Data(0..<32)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t), key=Data(0..<32)
         var commandSent=false
         func msg(_ prefix: Data,_ type: UInt8,_ time: UInt32,_ text: String) -> Data { var d=Data([7])+prefix+Data([255,type]); d.appendLE(time); return d+Data(text.utf8) }
         t.handle = { frame in
@@ -130,20 +130,20 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(result,"OK"); XCTAssertEqual(t.sent.first,Data([10])); XCTAssertEqual(t.sent.filter { $0[0] == 2 }.count,1)
     }
     @MainActor func testErrorsAndDisconnectDoNotLeaveContinuationHanging() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t)
         t.handle = { _ in t.emit(Data([1,2])) }
         do { try await s.contacts(); XCTFail() } catch { XCTAssertTrue(error.localizedDescription.contains("kód 2")) }
         t.handle = { _ in t.onDisconnect?() }
         do { try await s.contacts(); XCTFail() } catch { XCTAssertTrue(error.localizedDescription.contains("připojen")) }
     }
     @MainActor func testMalformedFramesCannotSatisfyRequest() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t)
         var malformed=0; s.onMalformed = { malformed += 1 }
         t.handle = { _ in t.emit(Data([4])); t.emit(Data([4,0,0,0,0])) }
         try await s.contacts(); XCTAssertEqual(malformed,1)
     }
     @MainActor func testTimeoutPoisonsSessionUntilDisconnect() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t, localTimeout:0.02)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t, localTimeout:0.02)
         do { _ = try await s.login(key:Data(0..<32),password:"test"); XCTFail() }
         catch { XCTAssertTrue(error.localizedDescription.contains("Vypršel")) }
         do { try await s.contacts(); XCTFail() }
@@ -154,7 +154,7 @@ final class SessionTests: XCTestCase {
         try await s.contacts()
     }
     @MainActor func testDuplicateMessageStillCompletesLocalPoll() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t), key=Data(0..<32)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t), key=Data(0..<32)
         var message = Data([7])+key.prefix(6)+Data([255,1]); message.appendLE(42); message.append(Data("old".utf8))
         var polls=0
         t.handle = { f in
@@ -165,13 +165,13 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(polls,3)
     }
     @MainActor func testWriteErrorAfterReplyCannotBeReportedAsSuccess() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t)
         t.handle = { _ in t.emit(Data([4,0,0,0,0])) }
         t.completionError = MeshError.disconnected
         do { try await s.contacts(); XCTFail() } catch { XCTAssertTrue(error.localizedDescription.contains("připojen")) }
     }
     @MainActor func testDisconnectDuringWriteDoesNotPoisonNewConnection() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t)
         t.completionError = MeshError.disconnected
         t.handle = { _ in t.onDisconnect?() }
         do { try await s.contacts(); XCTFail() } catch { }
@@ -181,7 +181,7 @@ final class SessionTests: XCTestCase {
         try await s.contacts()
     }
     @MainActor func testConcurrentOperationsAreRejected() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t)
         let first = Task { try await s.contacts() }
         while t.sent.isEmpty { await Task.yield() }
         do { try await s.contacts(); XCTFail() } catch { XCTAssertTrue(error.localizedDescription.contains("jiný")) }

@@ -11,7 +11,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 PLATFORM = 'Windows'
 TOP_FILES = ('README.md', 'LICENSE', 'CONTRIBUTING.md', '.gitignore', '.gitattributes', 'PROTOCOL.md', 'COMPATIBILITY.md', 'build.ps1', 'verify-ui.ps1', 'MeshCoreServicer.slnx', 'Directory.Build.props', 'global.json')
-SOURCE_DIRS = ('src', 'tests', 'installer', 'ThirdParty', 'scripts')
+SOURCE_DIRS = ('src', 'tests', 'installer', 'ThirdParty', 'scripts', 'docs')
 REPO_NAME = 'MeshCoreServicer-' + PLATFORM
 ZIP_NAME = REPO_NAME + '-source.zip'
 EXCLUDED = {'.git', '.DS_Store', '.swiftpm', '.build', 'build', 'dist', 'out', 'bin', 'obj',

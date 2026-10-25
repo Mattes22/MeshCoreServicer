@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import MeshCoreKit
 
 extension AppModel {
-    static var appVersion: String { Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "0.7.0" }
+    static var appVersion: String { Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "0.8.0" }
     static var osVersion: String {
         let v = ProcessInfo.processInfo.operatingSystemVersion
         return "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
@@ -16,7 +16,8 @@ extension AppModel {
         #endif
     }
     func saveProfilePreferences() {
-        var options = preferences.deviceOptions; options.monitorMinutes = monitorIntervalMinutes
+        guard !applyingMeasurementOptions, (try? DiagnosticPlan(intervalMinutes:monitorIntervalMinutes,samples:monitorSampleLimit,route:.known)) != nil else { return }
+        var options = preferences.deviceOptions; options.diagnosticMinutes = monitorIntervalMinutes; options.diagnosticSamples = monitorSampleLimit
         if library.account == nil { initialDeviceOptions = options }
         else { library.updateOptions(options) }
     }
@@ -34,7 +35,9 @@ extension AppModel {
                 adminID = nil; stopMonitoring()
             }
             consoleAccount = profile.id
-            preferences.apply(profile.options); monitorIntervalMinutes = profile.options.monitorMinutes
+            applyingMeasurementOptions = true
+            preferences.apply(profile.options); monitorIntervalMinutes = profile.options.diagnosticMinutes; monitorSampleLimit = profile.options.diagnosticSamples
+            applyingMeasurementOptions = false
             requestedProfileID = nil
             return true
         } catch { self.error = error.localizedDescription; return false }
@@ -50,7 +53,7 @@ extension AppModel {
             self.requestedProfileID = profile.id; self.ble.connect(id)
         }
         if ble.ready || !dirtyKeys.isEmpty {
-            confirmation = Confirmation(title:"Přepnout na jiný companion?",message:"Aktuální BLE relace se ukončí. Rozepsané změny repeateru se zahodí, přihlášení správce a monitoring se neobnoví. Nové zařízení se ověří podle veřejné identity.",action:action)
+            confirmation = Confirmation(title:"Přepnout na jiný companion?",message:"Aktuální BLE relace se ukončí. Rozepsané změny repeateru se zahodí, přihlášení správce a diagnostické měření se neobnoví. Nové zařízení se ověří podle veřejné identity.",action:action)
         } else { action() }
     }
     var evidenceFirmware: String {

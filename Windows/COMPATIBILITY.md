@@ -1,4 +1,11 @@
-# Ověření Windows portu 0.7.3
+# Ověření Windows portu 0.8.0
+
+Zdrojová verze 0.8.0: 111 automatických testů prošlo; Release cross kompilace
+WPF na macOS bez chyb a varování. Fyzický BLE/LoRa test a běh WPF ve Windows
+neproběhly. Pro 0.8.0 jsou připravené NSIS instalátory x64/ARM64;
+kompilace a extrakční kontrola nenahrazují skutečnou instalaci ve Windows.
+
+## Dřívější ověření verze 0.7.3
 
 Stav k 24. 10. 2026. Vývoj a cross kompilace na macOS ARM64, .NET SDK 10.0.401.
 
@@ -44,3 +51,12 @@ Verze 0.7.3 zlepšuje dávkové načítání prvotního nastavení: limit CLI od
 ## EXE instalátory 0.7.3
 
 NSIS 3.13, české per-user instalátory x64/ARM64 se zahrnutým runtime. Osm testů generátoru prošlo, kompilace obou instalátorů proběhla s varováními jako chybami. Rozbalené soubory a jejich architektury se porovnaly s publikací pomocí SHA-256; licence je přiložená. Skutečná instalace, zástupci, registr Windows, aktualizace a odinstalace **nebyly v tomto macOS prostředí provedené**. Windows ověřovací skript a přesný postup jsou ve zdrojích v `installer/`. EXE nemají digitální podpis.
+
+Zdrojová úprava konečného měření: ověřte na zařízení první prodlevu, automatické ukončení po limitu, Zastavit, přeskočení obsazeného termínu, společné omezení ručních a diagnostických dotazů a žádné obnovení po spánku / reconnectu. Viz [audit provozu](docs/TRAFFIC_POLICY.md). Fyzický test této úpravy nebyl proveden.
+
+## Instalační balíčky 0.8.0
+
+NSIS kompilace x64 i ARM64, kontrola extrahovaného obsahu podle SHA-256
+a nativní architektury aplikace/runtime jsou součástí ověření lokálního vydání.
+Přesné výsledky jsou v přiloženém validačním záznamu. EXE zůstávají nepodepsané;
+Windows instalace, aktualizace, odinstalace a BLE/LoRa nebyly fyzicky vyzkoušené.

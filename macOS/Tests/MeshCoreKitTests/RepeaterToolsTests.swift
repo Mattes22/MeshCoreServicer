@@ -74,7 +74,7 @@ final class RepeaterToolsTests: XCTestCase {
         XCTAssertEqual(try RepeaterCommand.regionName("#cz"),"#cz")
     }
     @MainActor func testBinaryRequestMatchesEchoedTagIncludingResponseBeforeSENT() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t), key = Data(0..<32)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t), key = Data(0..<32)
         t.handle = { frame in
             XCTAssertEqual(frame,Data([50])+key+Data([5,0,0]))
             t.emit(Data([0x8c,0,88,0,0,0,1])) // wrong tag
@@ -85,7 +85,7 @@ final class RepeaterToolsTests: XCTestCase {
         XCTAssertEqual(reply,Data([2,3])); XCTAssertEqual(t.sent.count,1)
     }
     @MainActor func testBinaryUsesSameExclusiveSessionAsCLIAndContacts() async throws {
-        let t = FakeTransport(), s = MeshSession(transport:t), key = Data(0..<32)
+        let t = FakeTransport(), s = MeshSession(traffic:.testing(),transport:t), key = Data(0..<32)
         let waiting = Task { try await s.binary(key:key,payload:Data([3,0,0,0])) }
         while t.sent.isEmpty { await Task.yield() }
         do { try await s.contacts(); XCTFail("Concurrent request was allowed") } catch { XCTAssertTrue(error.localizedDescription.contains("jiný")) }

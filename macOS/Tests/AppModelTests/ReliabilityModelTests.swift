@@ -25,8 +25,8 @@ final class ReliabilityModelTests: XCTestCase {
         var d = Data([UInt8(truncatingIfNeeded:battery),UInt8(battery >> 8),0,0,0x88,0xff,0x9c,0xff])
         for n: UInt32 in [10,20,30,uptime,1,2,3,4] { d.appendLE(n) }; d.append(contentsOf:[0,0,8,0,0,0,0,0]); return d
     }
-    @MainActor private func fixture() async throws -> (AppModel,ToolsTransport,Contact) {
-        let t = ToolsTransport(), m = AppModel(ble:BluetoothTransport(startImmediately:false),transport:t)
+    @MainActor private func fixture(traffic: ServiceTrafficGovernor? = nil) async throws -> (AppModel,ToolsTransport,Contact) {
+        let t = ToolsTransport(), m = AppModel(traffic:traffic ?? .testing(),ble:BluetoothTransport(startImmediately:false),transport:t)
         let c = Contact(key:Data(repeating:0xab,count:32),kind:2,name:"Test",stored:true)
         m.contacts = [c]; m.selectedID = c.id; m.initialized = true; m.adminID = c.id
         var info = Data([5,0,0,0])+Data(repeating:0x11,count:32)+Data(repeating:0,count:12); info.appendLE(869432); info.appendLE(62500); info.append(contentsOf:[7,5]); info.append(Data("Self".utf8)); m.event(try MeshCodec.decode(info))
@@ -125,13 +125,13 @@ final class ReliabilityModelTests: XCTestCase {
     @MainActor func testMonitorTickSkipsBusyAndStoresOnlyActualReply() async throws {
         let (m,t,c) = try await fixture(); t.statusReply = statusData()
         m.setMonitoring(true); defer { m.stopMonitoring() }
-        m.busy = true; await m.monitorTick(contact:c); XCTAssertTrue(t.frames.isEmpty); XCTAssertTrue(m.operations.current.samples.isEmpty)
-        m.busy = false; await m.monitorTick(contact:c)
+        m.busy = true; await m.monitorTick(contact:c,now:m.measurement!.next!); XCTAssertTrue(t.frames.isEmpty); XCTAssertTrue(m.operations.current.samples.isEmpty)
+        m.busy = false; await m.monitorTick(contact:c,now:m.measurement!.next!)
         XCTAssertEqual(t.frames.map{$0[0]},[27]); XCTAssertEqual(m.operations.current.samples.first?.battery,3700)
     }
     @MainActor func testMonitorFailureStopsWithoutRetryingAndDisconnectClearsOptIn() async throws {
         let (m,t,c) = try await fixture(); t.failStatus = true
-        m.setMonitoring(true); await m.monitorTick(contact:c)
+        m.setMonitoring(true); await m.monitorTick(contact:c,now:m.measurement!.next!)
         XCTAssertFalse(m.monitoring); XCTAssertNotNil(m.error); XCTAssertEqual(t.frames.count,1)
         m.ble.onDisconnect?(); XCTAssertFalse(m.monitoring); XCTAssertFalse(m.liveNotifications)
     }
@@ -166,5 +166,47 @@ final class ReliabilityModelTests: XCTestCase {
         let file = folder.appendingPathComponent(account+".json"); try Data("broken".utf8).write(to:file)
         let m = OperationsModel(archive:OperationsArchive(folder:folder)); await m.activate(account:account); m.beginChange("radio",repeater:repeater); await m.flush()
         XCTAssertNotNil(m.storageError); XCTAssertEqual(try String(contentsOf:file),"broken")
+    }
+    @MainActor func testDiagnosticLimitAndBusySlotsCannotCreateExtraRequests() async throws {
+        let (m,t,c) = try await fixture(); t.statusReply = statusData(); m.monitorSampleLimit = 2
+        m.setMonitoring(true); XCTAssertEqual(m.measurement?.plan.intervalMinutes,60)
+        m.busy = true; await m.monitorTick(contact:c,now:m.measurement!.next!)
+        XCTAssertEqual(m.measurement?.skipped,1); m.busy = false
+        await m.monitorTick(contact:c,now:m.measurement!.next!)
+        XCTAssertFalse(m.monitoring); XCTAssertNil(m.monitorNext); XCTAssertEqual(m.measurement?.received,1)
+        await m.monitorTick(contact:c,now:Date().addingTimeInterval(100000))
+        XCTAssertEqual(t.frames.filter{$0[0] == 27}.count,1)
+    }
+    @MainActor func testLateDiagnosticsNeverCatchUpAndHistoryDoesNotTransmit() async throws {
+        let (m,t,c) = try await fixture(); m.setMonitoring(true)
+        let end = m.measurement!.start.addingTimeInterval(Double(m.measurement!.plan.durationMinutes*60+31))
+        await m.monitorTick(contact:c,now:end)
+        XCTAssertFalse(m.monitoring); XCTAssertEqual(m.measurement?.skipped,3); XCTAssertTrue(t.frames.isEmpty)
+        _ = m.operations.current.samples; m.operations.select(c.id); _ = m.operations.current.snapshots
+        XCTAssertTrue(t.frames.isEmpty)
+    }
+    @MainActor func testRevokedAdminStopsDiagnosticsWithoutAnotherSample() async throws {
+        let (m,t,c) = try await fixture(); m.setMonitoring(true)
+        m.event(.login(prefix:Data(c.key.prefix(6)),permissions:0))
+        XCTAssertFalse(m.monitoring); XCTAssertFalse(m.admin); XCTAssertTrue(t.frames.isEmpty)
+    }
+    @MainActor func testNewApplicationNeverRestoresAnActiveMeasurement() async throws {
+        let (m,t,_) = try await fixture(); m.setMonitoring(true)
+        let other = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false),transport:ToolsTransport(),library:m.library)
+        XCTAssertFalse(other.monitoring); XCTAssertNil(other.measurement); XCTAssertTrue(t.frames.isEmpty)
+        m.stopMonitoring()
+    }
+    @MainActor func testStopCancelsPacingBeforeAnyRadioFrame() async throws {
+        var waiting = false
+        let governor = ServiceTrafficGovernor(now:{Date(timeIntervalSince1970:1800000000)},delay:{ _ in waiting = true; try await Task.sleep(nanoseconds:3_600_000_000_000) })
+        try await governor.acquire(route:.floodOrUnknown)
+        let (m,t,c) = try await fixture(traffic:governor); m.setMonitoring(true)
+        m.monitorTask?.cancel()
+        let now = m.measurement!.next!
+        let tick = Task { await m.monitorTick(contact:c,now:now) }; m.monitorTask = tick
+        for _ in 0..<1000 { if waiting { break }; await Task.yield() }
+        XCTAssertTrue(waiting); XCTAssertFalse(m.measurement!.transmitted)
+        m.stopMonitoring(); await tick.value
+        XCTAssertFalse(m.monitoring); XCTAssertFalse(m.busy); XCTAssertTrue(t.frames.isEmpty); XCTAssertNil(m.error)
     }
 }

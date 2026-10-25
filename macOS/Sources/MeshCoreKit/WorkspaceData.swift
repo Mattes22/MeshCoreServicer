@@ -7,8 +7,23 @@ public struct DevicePreferences: Codable, Equatable, Sendable {
     public var history = true
     public var changes = false
     public var enterSends = true
-    public var monitorMinutes = 15
+    public var monitorMinutes = 15 // Legacy preference; never used to start or schedule diagnostics.
+    public var diagnosticMinutes = 30
+    public var diagnosticSamples = 3
     public init() {}
+    enum CodingKeys: String, CodingKey { case autoReconnect, suggestions, help, history, changes, enterSends, monitorMinutes, diagnosticMinutes, diagnosticSamples }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy:CodingKeys.self)
+        autoReconnect = try c.decodeIfPresent(Bool.self,forKey:.autoReconnect) ?? true
+        suggestions = try c.decodeIfPresent(Bool.self,forKey:.suggestions) ?? true
+        help = try c.decodeIfPresent(Bool.self,forKey:.help) ?? true
+        history = try c.decodeIfPresent(Bool.self,forKey:.history) ?? true
+        changes = try c.decodeIfPresent(Bool.self,forKey:.changes) ?? false
+        enterSends = try c.decodeIfPresent(Bool.self,forKey:.enterSends) ?? true
+        monitorMinutes = try c.decodeIfPresent(Int.self,forKey:.monitorMinutes) ?? 15
+        diagnosticMinutes = try c.decodeIfPresent(Int.self,forKey:.diagnosticMinutes) ?? 30
+        diagnosticSamples = try c.decodeIfPresent(Int.self,forKey:.diagnosticSamples) ?? 3
+    }
 }
 public struct CompanionProfile: Codable, Identifiable, Equatable, Sendable {
     public let id: String

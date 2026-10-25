@@ -163,8 +163,8 @@ extension AppModel {
         tools.clockResult = "Odesílám čas Macu…"
         do {
             // Build immediately before send, not when the confirmation was opened.
-            let epoch = UInt32(clamping:Int64(Date().timeIntervalSince1970))
-            let reply = try await session.cli(key:c.key,command:"time \(epoch)")
+            var epoch = UInt32(clamping:Int64(Date().timeIntervalSince1970))
+            let reply = try await session.cli(key:c.key,command:"time \(epoch)",commandAtSend:{ epoch = UInt32(clamping:Int64(Date().timeIntervalSince1970)); return "time \(epoch)" })
             guard reply.uppercased().hasPrefix("OK") else { throw MeshError.remote(clean(reply)) }
             tools.clockResult = "Repeater potvrdil nastavení času. Ověřuji hodiny…"
             let check = try await session.cli(key:c.key,command:"clock")

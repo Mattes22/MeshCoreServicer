@@ -25,7 +25,7 @@ import MeshCoreKit
 final class AppModelTests: XCTestCase {
     @MainActor private func fixture() -> (AppModel,ScriptedTransport) {
         let transport = ScriptedTransport()
-        let model = AppModel(ble:BluetoothTransport(startImmediately:false),transport:transport)
+        let model = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false),transport:transport)
         let contact = Contact(key:Data(repeating:0xab,count:32),kind:2,name:"Test",stored:true)
         model.contacts = [contact]; model.selectedID = contact.id; model.initialized = true; model.adminID = contact.id
         return (model,transport)

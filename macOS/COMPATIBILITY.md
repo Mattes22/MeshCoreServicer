@@ -1,4 +1,11 @@
-# Kompatibilita a ověření vydání 0.7
+# Kompatibilita a ověření verze 0.8.0
+
+Zdrojová verze 0.8.0 (sestavení 8): 151 automatických Swift testů prošlo;
+Xcode Release sestavení pro arm64 i x86_64 prošlo. Distribuční DMG 0.8.0 má
+Developer ID podpis, Hardened Runtime, sandbox a notarizaci Apple pro aplikaci
+i obraz. Oba tickety jsou připojené; Gatekeeper a kontrola skutečně vložené
+aplikace pomocí syspolicy_check distribution prošly. Stažení a první spuštění
+na jiném čistém Macu nebyly vyzkoušené.
 
 Žádná kombinace fyzického companionu a repeateru zatím nebyla v tomto projektu doloženě otestována. Úspěšné automatické testy, sestavení a renderované náhledy nejsou důkazem funkčního BLE/LoRa spojení.
 
@@ -24,3 +31,5 @@ Protokolovým základem je MeshCore `81dbae592ffad40b4212bc0b37e82b38da08f4bc`, 
 5. Vytvořte **Report s náhledem**. Obsahuje aktuálně odpovídající uživatelské výsledky a verze, bez identit a původního textu logu. Dokud nejsou verze znovu načtené, report testy s neznámou kombinací nespojuje. Report se jen uloží; nikam se automaticky neposílá.
 
 Není-li zkouška provedená nebo je výsledek nejistý, ponechte **Neprovedeno**. Přijetí požadavku companionem není potvrzení doručení, změny nebo restartu repeateru.
+
+Konečné měření a společné servisní limity jsou zdrojová úprava; fyzické ověření podle [checklistu](HARDWARE_CHECKLIST.md) a [politiky provozu](docs/TRAFFIC_POLICY.md) zbývá provést.

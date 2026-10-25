@@ -5,18 +5,18 @@ import MeshCoreKit
 final class WorkspaceModelTests: XCTestCase {
     private let account = String(repeating:"11",count:32)
     @MainActor func testOptionsEditedBeforeFirstConnectionBecomeNewProfileDefaults() throws {
-        let m = AppModel(ble:BluetoothTransport(startImmediately:false))
+        let m = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false))
         m.preferences.consoleSuggestions = false; m.monitorIntervalMinutes = 40
         try identity(m,byte:0x11)
         XCTAssertFalse(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,40)
-        XCTAssertEqual(m.library.profile?.options.monitorMinutes,40)
+        XCTAssertEqual(m.library.profile?.options.diagnosticMinutes,40)
     }
     @MainActor private func identity(_ m: AppModel,byte: UInt8) throws {
         var d = Data([5,0,0,0])+Data(repeating:byte,count:32)+Data(repeating:0,count:12)
         d.appendLE(868000); d.appendLE(125000); d.append(contentsOf:[7,5]); d.append(Data("Companion test".utf8)); m.event(try MeshCodec.decode(d))
     }
     @MainActor private func fixture() async throws -> (AppModel,ToolsTransport,Contact) {
-        let t = ToolsTransport(), m = AppModel(ble:BluetoothTransport(startImmediately:false),transport:t)
+        let t = ToolsTransport(), m = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false),transport:t)
         try identity(m,byte:0x11)
         let c = Contact(key:Data(repeating:0xab,count:32),kind:2,name:"Test node",stored:true)
         m.contacts = [c]; m.selectedID = c.id; m.initialized = true; m.adminID = c.id
@@ -33,7 +33,7 @@ final class WorkspaceModelTests: XCTestCase {
         m.command = "private draft"; m.history = ["get name"]; m.console = [ConsoleLine(target:"Test",targetID:"old",command:"get name",response:"PRIVATE")]
         m.log("Previous profile event"); m.knownSecrets.insert("OLD_SECRET")
         try identity(m,byte:0x22)
-        XCTAssertTrue(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,15)
+        XCTAssertTrue(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,30)
         XCTAssertTrue(m.preferences.showMessageText,"Privacy preference stays global")
         XCTAssertTrue(m.history.isEmpty); XCTAssertTrue(m.command.isEmpty); XCTAssertTrue(m.console.isEmpty)
         XCTAssertTrue(m.logs.isEmpty); XCTAssertTrue(m.knownSecrets.isEmpty)

@@ -1,4 +1,4 @@
-# MeshCore Servicer pro Windows 0.7.3
+# MeshCore Servicer pro Windows 0.8.0
 
 Samostatná nativní desktopová aplikace: **C# / .NET 10 / WPF / Windows Bluetooth GATT**. Bez WebView, webového serveru, Electronu, JavaScriptu a placených závislostí. České rozhraní, světlý, tmavý a systémový vzhled. Nezávislý nástroj; nejde o oficiální aplikaci MeshCore.
 
@@ -6,9 +6,21 @@ Tato složka je kompletní samostatný projekt. Zdrojové soubory, licence,
 testy, instalátor a dokumentace jsou uvnitř; sestavení nevyžaduje
 soubory z nadřazené složky.
 
+## Verze 0.8.0
+
+Pravidelné sledování nahrazuje výslovně spuštěné, časově omezené diagnostické
+měření. Výchozí plán jsou 3 vzorky po 30 minutách se známou trasou;
+pro flood nebo neznámou trasu je minimum 60 minut. Nejvýše 6 vzorků během
+6 hodin, společné omezení vzdálených servisních požadavků a žádné automatické
+opakování ani obnovení měření. Historie a grafy zůstávají místní.
+Žádný interval není univerzálně bezpečný; podrobnosti: [Omezení provozu](docs/TRAFFIC_POLICY.md).
+
+Verze pro macOS i Windows je **0.8.0**. Připravené balíčky a jejich
+ověření jsou popsané níže. Přehled této verze je uvedený v této sekci.
+
 ## Instalace pro Windows
 
-Kromě přenosného ZIPu jsou k dispozici české EXE instalátory `MeshCoreServicer-0.7.3-Windows-x64-Setup.exe` a `MeshCoreServicer-0.7.3-Windows-arm64-Setup.exe`. Vyberte nativní architekturu svého PC. Instalace pro aktuální účet obsahuje .NET runtime, zástupce v nabídce Start, volitelnou ikonu na ploše a odinstalaci v Nastavení Windows → Aplikace. Aktualizaci proveďte po ukončení aplikace v oznamovací oblasti opětovným spuštěním stejného nebo novějšího instalátoru. Profily, zprávy a systémová hesla zůstávají zachované i po odinstalaci. Instalátory zatím nemají digitální podpis.
+Kromě přenosného ZIPu jsou k dispozici české EXE instalátory `MeshCoreServicer-0.8.0-Windows-x64-Setup.exe` a `MeshCoreServicer-0.8.0-Windows-arm64-Setup.exe`. Vyberte nativní architekturu svého PC. Instalace pro aktuální účet obsahuje .NET runtime, zástupce v nabídce Start, volitelnou ikonu na ploše a odinstalaci v Nastavení Windows → Aplikace. Aktualizaci proveďte po ukončení aplikace v oznamovací oblasti opětovným spuštěním stejného nebo novějšího instalátoru. Profily, zprávy a systémová hesla zůstávají zachované i po odinstalaci. Instalátory zatím nemají digitální podpis.
 
 Podrobný postup sestavení a stav ověření: ve zdrojovém projektu `installer/README.md`, v instalované aplikaci `INSTALLER.md`. Kompilace a kontrola vložených souborů proběhly na Macu; samotnou instalaci/aktualizaci/odinstalaci zbývá ověřit ve Windows.
 
@@ -66,7 +78,7 @@ Zavření okna ponechá aplikaci v oznamovací oblasti pro příjem zpráv. Dvoj
 - Systémová upozornění přes Windows notification area (`Shell_NotifyIcon`), volitelný zvuk, skrytý obsah při prvním zapnutí, ztlumení konverzací, otevření konverzace kliknutím a indikátor nepřečtených na hlavním panelu. Nejde o cloud push ani trvalé toast centrum. Windows může oznámení potlačit režimem Nerušit. Prvotní backlog nevyvolává oznámení; **oznámení jsou standardně vypnutá**.
 - Konzole: místní katalog, česká nápověda, Tab/dvojklik pro vložení, šipky pro výběr, Esc zavře návrhy, Ctrl+šipky pro historii, Ctrl+Enter nebo volitelně Enter odešle. Zápisy se standardně nenabízejí. Zkratky ukládají pouze název a typ příkazu; hodnoty se doplní až při použití a vložení nic neodesílá. Evidence skutečných odpovědí je vázaná na identitu a firmware; samotný katalog není potvrzení podpory.
 - Snímky načtené konfigurace bez hesel a soukromých klíčů, JSON import/export pro stejnou dvojici identit, výběr polí, živé porovnání, kontrola nezměněného stavu před obnovou a zpětné ověření každého zápisu.
-- Historie napětí a statistik, graf, ruční monitoring po LoRa (5–1440 minut, výchozí 15, nezačíná hned), přehled nejistých změn a ověření konfigurace bez opakování zápisu. Pokles uptime znamená možný restart; dostupnost sama restart nepotvrzuje. Čtení uloženého rádia nepotvrzuje jeho aktivování.
+- Historie napětí a statistik, graf, časově omezené diagnostické měření po LoRa (výchozí 3 vzorky po 30 minutách, bez známé trasy nejméně 60 minut; nejvýše 6 vzorků během 6 hodin, nezačíná hned), přehled nejistých změn a ověření konfigurace bez opakování zápisu. Pokles uptime znamená možný restart; dostupnost sama restart nepotvrzuje. Čtení uloženého rádia nepotvrzuje jeho aktivování.
 - Bezpečný diagnostický export s přesným náhledem a ruční checklist hardware. Žádná telemetrie aplikace ani automatické odesílání dat.
 
 Změna identity a přímá manipulace s privátními klíči nejsou ve formulářích. Mapa a jiné síťové transporty nejsou součástí této verze.
@@ -125,3 +137,12 @@ Kontrola navíc ověřuje skutečný prostor ikon v šablonách tlačítek, zala
 `python3 scripts/package_source.py` vytvoří samostatnou zdrojovou složku,
 ZIP a SHA-256 v `dist/source`. Nečte data aplikace a nezahrnuje instalátory,
 cache ani podpisové klíče. Pro další balíček použijte jiné `--output`.
+
+## Omezení servisního provozu
+
+Historie zůstává místní. Měření se spouští výslovně, termíny se nedohánějí
+a po odpojení, spánku, restartu, změně uzlu, ztrátě oprávnění či chybě se
+neobnovuje. Každý vzorek vyšle LoRa požadavek a vyvolá odpověď.
+Ruční a diagnostické servisní kroky sdílí limity; zápis a zpětné čtení
+jsou dva požadavky. Žádný interval není univerzálně bezpečný.
+[Audit, limity a migrace](docs/TRAFFIC_POLICY.md). Platí od verze 0.8.0.

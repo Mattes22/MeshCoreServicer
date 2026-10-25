@@ -18,7 +18,7 @@ public sealed partial class Controller
         var c = RequireNode(true); var generation = epoch;
         if (!await Confirm("Synchronizovat hodiny repeateru?", "Použije se aktuální čas tohoto PC. Zkontrolujte systémové datum. Firmware neposouvá čas zpět; po restartu synchronizaci opakujte ručně.")) return;
         StillCurrent(c, generation); BeginChange("Hodiny"); var time = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var reply = await Session.Cli(c.Key, "time " + time); if (!reply.StartsWith("OK", StringComparison.OrdinalIgnoreCase)) throw new MeshException("Nastavení času nepotvrzeno.");
+        var reply = await Session.Cli(c.Key, "time " + time, commandAtSend: () => { time = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds(); return "time " + time; }); if (!reply.StartsWith("OK", StringComparison.OrdinalIgnoreCase)) throw new MeshException("Nastavení času nepotvrzeno.");
         var check = await Session.Cli(c.Key, "clock"); var date = Commands.Clock(check);
         if (date == null || date < DateTimeOffset.FromUnixTimeSeconds(time).AddSeconds(-60) || date > DateTimeOffset.UtcNow.AddSeconds(60)) throw new MeshException("Načtený čas neodpovídá času PC; změna není plně ověřená.");
         MutableOps().ClockAfterRestart = DateTimeOffset.UtcNow; Resolve("Hodiny");
@@ -79,13 +79,39 @@ public sealed partial class Controller
         StillCurrent(c, generation); BeginChange(guest ? "Heslo hosta · ověřte samostatně" : "Heslo správce · ověřte přihlášením");
         var reply = await Session.Cli(c.Key, (guest ? "set guest.password " : "password ") + password);
         if (!(guest ? reply.StartsWith("OK", StringComparison.OrdinalIgnoreCase) : reply == "password now: " + password)) throw new MeshException("Repeater změnu hesla jednoznačně nepotvrdil.");
-        if (!guest) { adminNode = null; if (remember) credentials.Save(c.Id, password); else credentials.Delete(c.Id); }
+        if (!guest) { Measurement?.Stop(); adminNode = null; if (remember) credentials.Save(c.Id, password); else credentials.Delete(c.Id); }
         AddLog("Repeater potvrdil změnu hesla; nové přihlášení dosud netestováno");
     });
     public Task Advert(bool zeroHop) => SendCli(zeroHop ? "advert.zerohop" : "advert");
     public Task Restart() => SendCli("reboot");
     public void SetMonitoring(bool enabled)
-    { if (enabled) { RequireNode(true); if (Options.MonitorMinutes is < 5 or > 1440) throw new MeshException("Interval monitoringu musí být 5–1440 minut."); } Monitoring = enabled; NextMonitor = enabled ? DateTimeOffset.UtcNow.AddMinutes(Options.MonitorMinutes) : null; Update(); }
+    {
+        bool waiting = Measurement is { InFlight: true, Transmitted: false };
+        Measurement?.Stop(); if (waiting) Session.CancelServiceWait();
+        if (enabled) { RequireNode(true); if (Busy) throw new MeshException("Počkejte na dokončení operace; měření nebylo spuštěno."); Measurement = new(MeasurementPlan, measurementClock.GetUtcNow()); }
+        Update();
+    }
+    public async Task SetDiagnosticOptions(int interval, int samples)
+    {
+        if (Monitoring) throw new MeshException("Před změnou plánu zastavte měření.");
+        _ = new DiagnosticPlan(interval, samples, MeasurementRoute);
+        Options.DiagnosticMinutes = interval; Options.DiagnosticSamples = samples; await SaveLibrary(); Update();
+    }
+    private async Task DiagnosticTick(DateTimeOffset now)
+    {
+        if (!Monitoring || Measurement is not { } run) return;
+        if (!Admin || Node is not { Stored: true, Kind: 2 } c) { run.Stop(); Update(); return; }
+        if (now < run.Started) { run.Stop(); Error = "Systémový čas se posunul zpět; spusťte nové měření až po opravě času."; Update(); return; }
+        if (MeasurementRoute == ServiceRoute.FloodOrUnknown && run.Plan.IntervalMinutes < 60) { run.Stop(); Error = "Trasa už není ověřená; nové měření bez trasy vyžaduje nejméně 60 minut."; Update(); return; }
+        if (!run.TakeDue(now, Busy)) { Update(); return; }
+        var generation = epoch;
+        await Run("Diagnostické měření: žádám stav po LoRa…", async () =>
+        {
+            try { var status = await Session.Status(c.Key, run.MarkTransmitted); StillCurrent(c, generation); if (!ReferenceEquals(Measurement, run)) return; RecordStatus(c, status); run.Finish(true); }
+            catch { run.Finish(false); throw; }
+        }, () => run.Running && Node is { Stored: true, Kind: 2 } && ReferenceEquals(Measurement, run));
+        Update();
+    }
     public Task VerifyPending() => Run("Ověřuji čekající změny čtením…", async () =>
     {
         var c = RequireNode(true); foreach (var pending in Operations.Pending.ToArray())

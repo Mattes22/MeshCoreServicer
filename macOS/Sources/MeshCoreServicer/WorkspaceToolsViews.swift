@@ -7,7 +7,7 @@ struct CompanionProfilesView: View {
     @State private var editing: String?
     @State private var alias = ""
     var body: some View {
-        Panel(title:"Profily companionů",symbol:"person.crop.rectangle.stack",subtitle:"Místní názvy a vlastní nastavení konzole, obnovování BLE a intervalu monitoringu. Identita se ověřuje veřejným klíčem.") {
+        Panel(title:"Profily companionů",symbol:"person.crop.rectangle.stack",subtitle:"Místní názvy a vlastní nastavení konzole, obnovování BLE a plánu diagnostického měření. Identita se ověřuje veřejným klíčem.") {
             if let error = library.storageError { Text(error).font(.caption).foregroundStyle(.orange) }
             if library.document.profiles.isEmpty { Text("Profil vznikne po skutečném načtení identity companionu. Žádné zařízení není předvybrané.").font(.callout).foregroundStyle(.secondary) }
             ForEach(library.document.profiles.sorted{$0.lastConnected > $1.lastConnected}) { profile in
@@ -35,7 +35,7 @@ struct CompanionProfilesView: View {
                 }.padding(.vertical,6)
                 Divider()
             }
-            Text("Volby měněné při připojení se ukládají do aktivního profilu. Oznámení a soukromí jsou společné pro aplikaci. Přepnutí neobnoví správce, monitoring ani vysílání; kontakty a zprávy se načítají pro novou identitu.").font(.caption).foregroundStyle(.secondary)
+            Text("Volby měněné při připojení se ukládají do aktivního profilu. Oznámení a soukromí jsou společné pro aplikaci. Přepnutí neobnoví správce, diagnostické měření ani vysílání; kontakty a zprávy se načítají pro novou identitu.").font(.caption).foregroundStyle(.secondary)
         }
     }
 }

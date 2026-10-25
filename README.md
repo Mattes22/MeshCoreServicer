@@ -1,4 +1,4 @@
-# MeshCore Servicer
+# MeshCore Servicer 0.8.0
 
 Nativní desktopová aplikace pro MeshCore companiony a vzdálenou správu repeaterů.
 České rozhraní pro **macOS a Windows**, zprávy, konzole s nápovědou a diagnostika.
@@ -7,6 +7,18 @@ Nezávislý komunitní projekt, nejde o oficiální aplikaci MeshCore.
 **Spojení:** počítač → Bluetooth LE → companion → LoRa → repeater.
 Repeater se nespravuje přímým BLE připojením.
 
+## Verze 0.8.0
+
+Pravidelné sledování nahrazuje výslovně spuštěné, časově omezené diagnostické
+měření. Výchozí plán jsou 3 vzorky po 30 minutách se známou trasou;
+pro flood nebo neznámou trasu je minimum 60 minut. Nejvýše 6 vzorků během
+6 hodin, společné omezení vzdálených servisních požadavků a žádné automatické
+opakování ani obnovení měření. Historie a grafy zůstávají místní.
+Žádný interval není univerzálně bezpečný; podrobnosti: [Omezení provozu](docs/TRAFFIC_POLICY.md).
+
+Verze pro macOS i Windows je **0.8.0**. Připravené balíčky a jejich
+ověření jsou popsané níže; poznámky ke změnám jsou v [CHANGELOG.md](CHANGELOG.md).
+
 ## Instalace
 
 Instalační soubory jsou v části **Releases** tohoto repozitáře. Zdrojový ZIP
@@ -14,12 +26,12 @@ z tlačítka Code slouží vývojářům.
 
 | Systém | Balíček | Instalace |
 |---|---|---|
-| macOS 14+, Apple Silicon i Intel | `MeshCoreServicer-0.7.0-macOS-universal.dmg` | Otevřít a přetáhnout aplikaci do Aplikací |
-| Windows 11, Intel/AMD | `MeshCoreServicer-0.7.3-Windows-x64-Setup.exe` | Spustit instalátor pro aktuální účet |
-| Windows 11 na ARM | `MeshCoreServicer-0.7.3-Windows-arm64-Setup.exe` | Spustit ARM64 instalátor |
+| macOS 14+, Apple Silicon i Intel | `MeshCoreServicer-0.8.0-macOS-universal.dmg` | Otevřít a přetáhnout aplikaci do Aplikací |
+| Windows 11, Intel/AMD | `MeshCoreServicer-0.8.0-Windows-x64-Setup.exe` | Spustit instalátor pro aktuální účet |
+| Windows 11 na ARM | `MeshCoreServicer-0.8.0-Windows-arm64-Setup.exe` | Spustit ARM64 instalátor |
 
-macOS vydání 0.7.0 má Developer ID podpis a notarizaci Apple; ověřte přiložený
-`.sha256` a `.validation.json`. Windows instalátory 0.7.3 zatím nemají digitální
+macOS vydání 0.8.0 má Developer ID podpis a notarizaci Apple; ověřte přiložený
+`.sha256` a `.validation.json`. Windows instalátory 0.8.0 zatím nemají digitální
 podpis. Sestavení ze zdrojů ani libovolná upravená kopie automaticky podpis
 vydavatele nezískává.
 
@@ -33,7 +45,7 @@ vydavatele nezískává.
   telemetrie, sousedé, ACL, hesla, regiony a restart s potvrzením.
 - Prvotní nastavení s volitelným českým komunitním profilem a kontrolou změn.
 - Konzole s historií, místní nápovědou a doplňováním; snímky konfigurace,
-  ruční monitoring a diagnostický export.
+  časově omezené diagnostické měření a diagnostický export.
 
 Hesla se ukládají do macOS Keychain nebo Windows Credential Manager. Aplikace
 neobsahuje osobní profily ani přednastavené soukromé uzly. Připojení samo nemění
@@ -90,6 +102,18 @@ Každá obsahuje vlastní projekt, zdroje, testy a nástroje pro sestavení.
 
 Automatické testy a sestavení nenahrazují ověření BLE/LoRa na konkrétním
 hardwaru. Stav skutečných zkoušek je uvedený v návodech a kompatibilitě.
+
+## Omezení servisního provozu
+
+Historie a grafy jsou místní. Aktivní měření se spouští výslovně: výchozí
+plán jsou 3 vzorky po 30 minutách, bez známé trasy nejméně po 60 minutách.
+Nejvýše lze naplánovat 6 vzorků během 6 hodin. Zmeškané termíny se nedohánějí
+ani automaticky neopakují. Měření se neobnovuje po odpojení, restartu nebo
+spánku. Ruční servis i měření sdílí rozpočet a prodlevy po každém požadavku.
+
+Úplný audit operací, limity, migrace a zdůvodnění:
+[Provoz LoRa a diagnostika](docs/TRAFFIC_POLICY.md).
+Žádný interval není univerzálně bezpečný. Tato pravidla platí od verze 0.8.0.
 
 ## Licence
 

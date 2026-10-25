@@ -18,27 +18,52 @@ extension AppModel {
     func acceptHealth(_ status: RepeaterStatus, contact c: Contact) {
         stats = status; statsDate = Date(); verified[c.id] = Date(); operations.record(status,repeater:c.id)
     }
-    func stopMonitoring() { monitorTask?.cancel(); monitorTask = nil; monitoring = false; monitorNext = nil }
+    var measurementRoute: ServiceRoute { selected.map { session.route(for:$0.key) } ?? .floodOrUnknown }
+    var measurementPlan: DiagnosticPlan? { try? DiagnosticPlan(intervalMinutes:max(monitorIntervalMinutes,measurementRoute.minimumMeasurementMinutes),samples:monitorSampleLimit,route:measurementRoute) }
+    func stopMonitoring() {
+        monitoring = false; monitorNext = nil; measurement?.stop()
+        // An already transmitted request cannot be recalled: let its bounded reply wait finish.
+        if measurement?.transmitted != true { monitorTask?.cancel() }
+        monitorTask = nil
+    }
     func setMonitoring(_ enabled: Bool) {
         stopMonitoring(); guard enabled else { return }
-        guard admin, let c = selected, c.stored, let account = selfInfo?.key.hex, (5...1440).contains(monitorIntervalMinutes) else { error = "Monitoring vyžaduje připojení, správce a interval 5–1440 minut."; return }
-        monitoring = true
-        let interval = UInt64(monitorIntervalMinutes)*60
+        guard !busy, admin, let c = selected, c.stored, c.kind == 2, let account = selfInfo?.key.hex, let plan = measurementPlan else { error = "Měření vyžaduje správce, neobsazené spojení, 1–6 vzorků a délku nejvýše 6 hodin."; return }
+        measurement = DiagnosticMeasurement(plan:plan); monitoring = true
+        let run = measurement!.id
         monitorTask = Task { [weak self] in
-            while !Task.isCancelled {
-                self?.monitorNext = Date().addingTimeInterval(Double(interval))
-                do { try await Task.sleep(nanoseconds:interval*1_000_000_000) } catch { return }
-                guard let self, self.monitoring, self.admin, self.selectedID == c.id, self.selfInfo?.key.hex == account else { self?.stopMonitoring(); return }
+            while let self, self.monitoring, self.measurement?.id == run, let next = self.measurement?.next {
+                self.monitorNext = next
+                do { try await Task.sleep(nanoseconds:UInt64(min(Double(plan.intervalMinutes*60),max(0,next.timeIntervalSinceNow))*1e9)) } catch { return }
+                guard self.measurement?.id == run else { return }
+                guard self.monitoring, self.admin, self.selectedID == c.id, self.selfInfo?.key.hex == account else { self.stopMonitoring(); return }
                 await self.monitorTick(contact:c)
             }
         }
     }
-    func monitorTick(contact c: Contact) async {
-        guard monitoring, admin, !busy, selectedID == c.id else { return }
-        busy = true; progress = "Monitor: načítám stav repeateru po LoRa…"
-        defer { busy = false }
-        do { let status = try await session.status(key:c.key); acceptHealth(status,contact:c); progress = "Monitoring: stav uložen" }
-        catch { stopMonitoring(); self.error = clean(error.localizedDescription); progress = "Monitoring zastaven po chybě"; log("Monitoring zastaven; požadavek nebude automaticky opakován.",level:.warning) }
+    func monitorTick(contact c: Contact, now: Date = Date()) async {
+        guard monitoring, admin, selectedID == c.id, selected?.stored == true, selected?.kind == 2 else { stopMonitoring(); return }
+        if let started = measurement?.start, now < started { stopMonitoring(); error = "Systémový čas se posunul zpět; spusťte nové měření až po opravě času."; return }
+        if measurementRoute == .floodOrUnknown, (measurement?.plan.intervalMinutes ?? 0) < 60 {
+            stopMonitoring(); error = "Trasa už není ověřená. Měření zastaveno; nové měření bez trasy vyžaduje nejméně 60 minut."; return
+        }
+        guard measurement?.takeDue(now:now,busy:busy) == true else {
+            monitoring = measurement?.running == true; monitorNext = measurement?.next; return
+        }
+        busy = true; progress = "Diagnostické měření: žádám stav po LoRa…"
+        let generation = connectionGeneration, run = measurement!.id
+        defer { busy = false; if measurement?.id == run { monitoring = measurement?.running == true; monitorNext = monitoring ? measurement?.next : nil } }
+        do {
+            try session.beginServiceOperation { [weak self] in self?.monitoring == true && self?.selected?.stored == true && self?.selected?.kind == 2 && self?.measurement?.id == run && self?.admin == true && self?.selectedID == c.id && self?.connectionGeneration == generation }
+            defer { session.endServiceOperation() }
+            let status = try await session.status(key:c.key,onSend:{ self.measurement?.markTransmitted() })
+            guard generation == connectionGeneration, selectedID == c.id, measurement?.id == run else { return }
+            acceptHealth(status,contact:c); measurement?.finish(success:true); progress = "Diagnostický vzorek uložen"
+        } catch {
+            if measurement?.id == run { measurement?.finish(success:false); stopMonitoring() }
+            if error is ServiceOperationCancelled || error is CancellationError && !monitoring { progress = "Měření zastaveno před odesláním"; return }
+            self.error = clean(error.localizedDescription); progress = "Měření zastaveno po chybě"; log("Diagnostické měření zastaveno; žádné automatické opakování.",level:.warning)
+        }
     }
     func captureSnapshot(name: String) {
         guard let c = selected, let account = selfInfo?.key.hex, account == operations.document?.account, !busy else { return }

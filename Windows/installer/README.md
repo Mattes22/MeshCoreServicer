@@ -39,14 +39,14 @@ Na Macu může být potřeba nastavit `NSISDIR` na složku obsahující `Include
 
 ## Ověření a jeho omezení
 
-Zde na macOS prošlo osm testů generátoru, obě skutečné kompilace NSIS s varováními jako chybami, rozbalení instalátorů pomocí 7-Zip a porovnání SHA-256 všech 415 vložených souborů x64 a 414 ARM64 (včetně NSIS licence). Obsah aplikace odpovídá již sestavené verzi 0.7.3 s 92 testy jádra. Kontrola zahrnuje skutečnou architekturu aplikace/runtime, uninstaller a nepřítomnost osobních údajů v balíčku. Nevydáváme statickou kontrolu za provedenou instalaci.
+Zde na macOS prošlo osm testů generátoru, obě skutečné kompilace NSIS s varováními jako chybami, rozbalení instalátorů pomocí 7-Zip a porovnání SHA-256 všech vložených souborů x64 a ARM64 (včetně NSIS licence). Obsah aplikace odpovídá již sestavené verzi 0.8.0 se 111 testy jádra. Kontrola zahrnuje skutečnou architekturu aplikace/runtime, uninstaller a nepřítomnost osobních údajů v balíčku. Nevydáváme statickou kontrolu za provedenou instalaci.
 
 **Běh průvodce, změny registru, zástupci, aktualizace, odinstalace a SmartScreen zde na Windows nebyly vyzkoušené.** Pro kontrolu v čistém účtu/VM Windows je přiložen skript:
 
 ```powershell
 .\installer\verify-installer.ps1 `
-  -Installer '.\out\MeshCoreServicer-0.7.3-Windows-x64-Setup.exe' `
-  -PayloadManifest '.\out\MeshCoreServicer-0.7.3-Windows-x64-Setup.payload.json' `
+  -Installer '.\out\MeshCoreServicer-0.8.0-Windows-x64-Setup.exe' `
+  -PayloadManifest '.\out\MeshCoreServicer-0.8.0-Windows-x64-Setup.payload.json' `
   -DisposableTestEnvironment
 ```
 

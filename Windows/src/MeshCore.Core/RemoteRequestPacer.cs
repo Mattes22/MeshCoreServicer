@@ -4,8 +4,8 @@ namespace MeshCore.Core;
 // legacy companions forward the app's whole-second timestamp unchanged.
 public sealed class RemoteRequestPacer
 {
-    private readonly TimeProvider clock;
-    private readonly Func<TimeSpan, CancellationToken, Task> delay;
+    internal readonly TimeProvider clock;
+    internal readonly Func<TimeSpan, CancellationToken, Task> delay;
     private long? sentAt;
     private uint lastTimestamp;
     public RemoteRequestPacer(TimeProvider? clock = null, Func<TimeSpan, CancellationToken, Task>? delay = null)

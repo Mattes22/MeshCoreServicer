@@ -14,7 +14,7 @@ struct WorkspaceDocument: Codable {
         let accounts = Set(profiles.map(\.id))
         for p in profiles {
             _ = try RepeaterCommand.publicKey(p.id)
-            guard p.alias.utf8.count <= 80, p.name.count <= 80, (5...1440).contains(p.options.monitorMinutes) else { throw MeshError.invalid("profil companionu") }
+            guard p.alias.utf8.count <= 80, p.name.count <= 80, (5...1440).contains(p.options.monitorMinutes), (30...360).contains(p.options.diagnosticMinutes), (1...6).contains(p.options.diagnosticSamples), p.options.diagnosticMinutes*p.options.diagnosticSamples <= 360 else { throw MeshError.invalid("profil companionu") }
         }
         for shortcut in shortcuts { try shortcut.validate(); guard accounts.contains(shortcut.account) else { throw MeshError.invalid("účet zkratky") } }
         for e in evidence {

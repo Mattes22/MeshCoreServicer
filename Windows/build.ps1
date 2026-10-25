@@ -11,6 +11,7 @@ try {
     Copy-Item installer/README.md (Join-Path $destination 'INSTALLER.md')
     Copy-Item LICENSE (Join-Path $destination 'LICENSE.txt')
     Copy-Item ThirdParty -Destination $destination -Recurse -Force
+    Copy-Item docs -Destination $destination -Recurse -Force
     # Preserve the notices from the exact runtime versions chosen by this SDK.
     $cache = $env:NUGET_PACKAGES
     if (-not $cache) { $cache = Join-Path $env:USERPROFILE '.nuget/packages' }

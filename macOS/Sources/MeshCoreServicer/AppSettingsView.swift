@@ -36,7 +36,7 @@ struct AppSettingsView: View {
                 Text("Pouze k companionu zvolenému během tohoto běhu aplikace. Prodlevy 1–30 sekund. Ruční odpojení automatické pokusy ukončí. Párovací chybu je nutné vyřešit ručně. Obnovení neopakuje vysílání ani přihlášení správce.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Běh na pozadí") {
-                Text("Zavřené nebo minimalizované okno aplikaci neukončuje. Příjem a oznámení vyžadují běžící aplikaci a BLE spojení. Během spánku Macu se příjem negarantuje. Monitoring repeateru se při spánku, odpojení nebo chybě zastaví.").font(.caption).foregroundStyle(.secondary)
+                Text("Zavřené nebo minimalizované okno aplikaci neukončuje. Příjem a oznámení vyžadují běžící aplikaci a BLE spojení. Během spánku Macu se příjem negarantuje. Diagnostické měření se při spánku, odpojení nebo chybě zastaví.").font(.caption).foregroundStyle(.secondary)
             }
         }.formStyle(.grouped)
     }

@@ -1,6 +1,6 @@
 # Protokol Windows portu
 
-Referenční revize aplikace 0.7.3, ověřeno 24. 10. 2026. Windows port používá stejné formáty jako macOS verze; není to webový obal.
+Zdrojová verze aplikace 0.8.0. Referenční protokolové zdroje ověřeny 24. 10. 2026. Windows port používá stejné formáty jako macOS verze; není to webový obal.
 
 - Firmware MeshCore **v1.18.0, commit `81dbae592ffad40b4212bc0b37e82b38da08f4bc`**: [repozitář](https://github.com/meshcore-dev/MeshCore/tree/81dbae592ffad40b4212bc0b37e82b38da08f4bc).
 - [Companion MyMesh.cpp](https://github.com/meshcore-dev/MeshCore/blob/81dbae592ffad40b4212bc0b37e82b38da08f4bc/examples/companion_radio/MyMesh.cpp): opkódy, offsety, lokální odezvy, fronta, push události, discovery, login, binární požadavky.
@@ -77,3 +77,5 @@ RSSI ve statusu je síla posledního paketu přijatého **repeaterem**, s neurč
 - [WPF](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/overview/), [WinRT API z desktopové aplikace](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/winrt-apis-desktop-apps).
 - [Bluetooth GATT klient](https://learn.microsoft.com/en-us/windows/apps/develop/devices-sensors/gatt-client), [systémové párování](https://learn.microsoft.com/en-us/windows/apps/develop/devices-sensors/pair-devices). Custom pairing používá systémové úložiště párování; nativní UI pouze získá uživatelův skutečný PIN nebo potvrzení.
 - [Credential Manager](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credwritew), [oznámení Shell_NotifyIcon](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shell_notifyiconw).
+
+Servisní limity na hranici odeslání a konečné diagnostické plánování: [Provoz LoRa](docs/TRAFFIC_POLICY.md). Rámce, korelace a požadavek na MTU se nemění.

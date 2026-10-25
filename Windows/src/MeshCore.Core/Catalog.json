@@ -1,0 +1,303 @@
+[
+  {
+    "Command": "ver",
+    "Arguments": "",
+    "Title": "Verze firmwaru",
+    "Detail": "Verze vzdáleného repeateru.",
+    "Changes": false
+  },
+  {
+    "Command": "board",
+    "Arguments": "",
+    "Title": "Hardware",
+    "Detail": "Označení vzdálené desky.",
+    "Changes": false
+  },
+  {
+    "Command": "clock",
+    "Arguments": "",
+    "Title": "Hodiny UTC",
+    "Detail": "Pouze čtení hodin repeateru.",
+    "Changes": false
+  },
+  {
+    "Command": "neighbors",
+    "Arguments": "",
+    "Title": "Sousedé",
+    "Detail": "Sousedé slyšení rádiem vzdáleného repeateru.",
+    "Changes": false
+  },
+  {
+    "Command": "region",
+    "Arguments": "",
+    "Title": "Regiony",
+    "Detail": "Přehled regionů a flood oprávnění.",
+    "Changes": false
+  },
+  {
+    "Command": "region home",
+    "Arguments": "",
+    "Title": "Domovský region",
+    "Detail": "Čtení domovského regionu.",
+    "Changes": false
+  },
+  {
+    "Command": "region default",
+    "Arguments": "",
+    "Title": "Výchozí region",
+    "Detail": "Čtení výchozího scope.",
+    "Changes": false
+  },
+  {
+    "Command": "get name",
+    "Arguments": "",
+    "Title": "Název uzlu",
+    "Detail": "Nejvýše 23 UTF-8 bajtů, bez znaku |.",
+    "Changes": false
+  },
+  {
+    "Command": "set name",
+    "Arguments": "<název>",
+    "Title": "Název uzlu",
+    "Detail": "Nejvýše 23 UTF-8 bajtů, bez znaku |.",
+    "Changes": true
+  },
+  {
+    "Command": "get lat",
+    "Arguments": "",
+    "Title": "Zeměpisná šířka",
+    "Detail": "−90 až 90, desetinná tečka.",
+    "Changes": false
+  },
+  {
+    "Command": "set lat",
+    "Arguments": "<stupně>",
+    "Title": "Zeměpisná šířka",
+    "Detail": "−90 až 90, desetinná tečka.",
+    "Changes": true
+  },
+  {
+    "Command": "get lon",
+    "Arguments": "",
+    "Title": "Zeměpisná délka",
+    "Detail": "−180 až 180, desetinná tečka.",
+    "Changes": false
+  },
+  {
+    "Command": "set lon",
+    "Arguments": "<stupně>",
+    "Title": "Zeměpisná délka",
+    "Detail": "−180 až 180, desetinná tečka.",
+    "Changes": true
+  },
+  {
+    "Command": "get tx",
+    "Arguments": "",
+    "Title": "Vysílací výkon",
+    "Detail": "Aplikace přijímá 1–22 dBm. Skutečné možnosti závisejí na desce a firmwaru; zohledněte místní pravidla.",
+    "Changes": false
+  },
+  {
+    "Command": "set tx",
+    "Arguments": "<dBm>",
+    "Title": "Vysílací výkon",
+    "Detail": "Aplikace přijímá 1–22 dBm. Skutečné možnosti závisejí na desce a firmwaru; zohledněte místní pravidla.",
+    "Changes": true
+  },
+  {
+    "Command": "get radio",
+    "Arguments": "",
+    "Title": "Parametry rádia",
+    "Detail": "Čtyři hodnoty oddělené čárkou. Uložené rádio se použije po restartu; hrozí ztráta LoRa spojení. Nepředvyplňuje se frekvence sítě.",
+    "Changes": false
+  },
+  {
+    "Command": "set radio",
+    "Arguments": "<MHz,BW_kHz,SF,CR>",
+    "Title": "Parametry rádia",
+    "Detail": "Čtyři hodnoty oddělené čárkou. Uložené rádio se použije po restartu; hrozí ztráta LoRa spojení. Nepředvyplňuje se frekvence sítě.",
+    "Changes": true
+  },
+  {
+    "Command": "get advert.interval",
+    "Arguments": "",
+    "Title": "Zero-hop advert",
+    "Detail": "0 vypne automatický advert; jinak sudý počet 60–240 minut.",
+    "Changes": false
+  },
+  {
+    "Command": "set advert.interval",
+    "Arguments": "<minuty>",
+    "Title": "Zero-hop advert",
+    "Detail": "0 vypne automatický advert; jinak sudý počet 60–240 minut.",
+    "Changes": true
+  },
+  {
+    "Command": "get flood.advert.interval",
+    "Arguments": "",
+    "Title": "Flood advert",
+    "Detail": "0 vypne automatický advert; jinak 3–168 hodin.",
+    "Changes": false
+  },
+  {
+    "Command": "set flood.advert.interval",
+    "Arguments": "<hodiny>",
+    "Title": "Flood advert",
+    "Detail": "0 vypne automatický advert; jinak 3–168 hodin.",
+    "Changes": true
+  },
+  {
+    "Command": "get repeat",
+    "Arguments": "",
+    "Title": "Přeposílání",
+    "Detail": "Zapnutí nebo vypnutí přeposílání vzdáleného uzlu.",
+    "Changes": false
+  },
+  {
+    "Command": "set repeat",
+    "Arguments": "<on|off>",
+    "Title": "Přeposílání",
+    "Detail": "Zapnutí nebo vypnutí přeposílání vzdáleného uzlu.",
+    "Changes": true
+  },
+  {
+    "Command": "get owner.info",
+    "Arguments": "",
+    "Title": "Veřejný kontakt vlastníka",
+    "Detail": "Nejvýše 118 UTF-8 bajtů. Údaj bude veřejný; | znamená nový řádek.",
+    "Changes": false
+  },
+  {
+    "Command": "set owner.info",
+    "Arguments": "<kontakt>",
+    "Title": "Veřejný kontakt vlastníka",
+    "Detail": "Nejvýše 118 UTF-8 bajtů. Údaj bude veřejný; | znamená nový řádek.",
+    "Changes": true
+  },
+  {
+    "Command": "get dutycycle",
+    "Arguments": "",
+    "Title": "Duty cycle",
+    "Detail": "1–100 %. Dostupné od firmwaru 1.15; af je jiné vyjádření stejného nastavení.",
+    "Changes": false
+  },
+  {
+    "Command": "set dutycycle",
+    "Arguments": "<procenta>",
+    "Title": "Duty cycle",
+    "Detail": "1–100 %. Dostupné od firmwaru 1.15; af je jiné vyjádření stejného nastavení.",
+    "Changes": true
+  },
+  {
+    "Command": "get af",
+    "Arguments": "",
+    "Title": "Airtime factor",
+    "Detail": "0–9. Duty cycle = 100 / (af + 1) %. Nezapisujte současně s dutycycle.",
+    "Changes": false
+  },
+  {
+    "Command": "set af",
+    "Arguments": "<faktor>",
+    "Title": "Airtime factor",
+    "Detail": "0–9. Duty cycle = 100 / (af + 1) %. Nezapisujte současně s dutycycle.",
+    "Changes": true
+  },
+  {
+    "Command": "get path.hash.mode",
+    "Arguments": "",
+    "Title": "Velikost hashe cesty",
+    "Detail": "0 = 1 bajt, 1 = 2 bajty, 2 = 3 bajty.",
+    "Changes": false
+  },
+  {
+    "Command": "set path.hash.mode",
+    "Arguments": "<0|1|2>",
+    "Title": "Velikost hashe cesty",
+    "Detail": "0 = 1 bajt, 1 = 2 bajty, 2 = 3 bajty.",
+    "Changes": true
+  },
+  {
+    "Command": "get flood.max",
+    "Arguments": "",
+    "Title": "Limit flood přeskoků",
+    "Detail": "Horní hranice počtu přeskoků.",
+    "Changes": false
+  },
+  {
+    "Command": "set flood.max",
+    "Arguments": "<0–64>",
+    "Title": "Limit flood přeskoků",
+    "Detail": "Horní hranice počtu přeskoků.",
+    "Changes": true
+  },
+  {
+    "Command": "get flood.max.advert",
+    "Arguments": "",
+    "Title": "Limit advert přeskoků",
+    "Detail": "Horní hranice přeskoků flood advertu.",
+    "Changes": false
+  },
+  {
+    "Command": "set flood.max.advert",
+    "Arguments": "<0–64>",
+    "Title": "Limit advert přeskoků",
+    "Detail": "Horní hranice přeskoků flood advertu.",
+    "Changes": true
+  },
+  {
+    "Command": "get flood.max.unscoped",
+    "Arguments": "",
+    "Title": "Limit přeskoků bez regionu",
+    "Detail": "Horní hranice přeskoků neomezeného flood provozu.",
+    "Changes": false
+  },
+  {
+    "Command": "set flood.max.unscoped",
+    "Arguments": "<0–64>",
+    "Title": "Limit přeskoků bez regionu",
+    "Detail": "Horní hranice přeskoků neomezeného flood provozu.",
+    "Changes": true
+  },
+  {
+    "Command": "get loop.detect",
+    "Arguments": "",
+    "Title": "Detekce smyček",
+    "Detail": "Režim detekce smyček při přeposílání.",
+    "Changes": false
+  },
+  {
+    "Command": "set loop.detect",
+    "Arguments": "<off|minimal|moderate|strict>",
+    "Title": "Detekce smyček",
+    "Detail": "Režim detekce smyček při přeposílání.",
+    "Changes": true
+  },
+  {
+    "Command": "time",
+    "Arguments": "<Unix_sekundy>",
+    "Title": "Nastavit čas",
+    "Detail": "Čas UTC z PC. Firmware neposouvá hodiny zpět.",
+    "Changes": true
+  },
+  {
+    "Command": "advert",
+    "Arguments": "",
+    "Title": "Flood advert",
+    "Detail": "Vyvolá rádiové vysílání repeateru.",
+    "Changes": true
+  },
+  {
+    "Command": "advert.zerohop",
+    "Arguments": "",
+    "Title": "Zero-hop advert",
+    "Detail": "Vyvolá rádiové vysílání bez přeskoků.",
+    "Changes": true
+  },
+  {
+    "Command": "reboot",
+    "Arguments": "",
+    "Title": "Restart",
+    "Detail": "Vyžaduje potvrzení, bez odpovědi a bez potvrzení provedení.",
+    "Changes": true
+  }
+]

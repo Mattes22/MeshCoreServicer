@@ -1,0 +1,42 @@
+.build/
+build/
+DerivedData/
+dist/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+
+# IDE and language caches
+.swiftpm/
+**/bin/
+**/obj/
+out/
+.vs/
+*.user
+*.suo
+__pycache__/
+*.pyc
+
+# Local configuration, credentials and signing material
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.p8
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+*.local.xcconfig
+
+# Distribution artifacts belong in GitHub Releases
+*.dmg
+*.pkg
+*.exe
+*.zip
+*.xcarchive/
+*.dSYM/

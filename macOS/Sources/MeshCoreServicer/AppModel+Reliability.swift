@@ -19,7 +19,7 @@ extension AppModel {
         stats = status; statsDate = Date(); verified[c.id] = Date(); operations.record(status,repeater:c.id)
     }
     var measurementRoute: ServiceRoute { selected.map { session.route(for:$0.key) } ?? .floodOrUnknown }
-    var measurementPlan: DiagnosticPlan? { try? DiagnosticPlan(intervalMinutes:max(monitorIntervalMinutes,measurementRoute.minimumMeasurementMinutes),samples:monitorSampleLimit,route:measurementRoute) }
+    var measurementPlan: DiagnosticPlan? { try? DiagnosticPlan(intervalMinutes:monitorIntervalMinutes,samples:monitorSampleLimit,route:measurementRoute) }
     func stopMonitoring() {
         monitoring = false; monitorNext = nil; measurement?.stop()
         // An already transmitted request cannot be recalled: let its bounded reply wait finish.
@@ -28,8 +28,8 @@ extension AppModel {
     }
     func setMonitoring(_ enabled: Bool) {
         stopMonitoring(); guard enabled else { return }
-        guard !busy, admin, let c = selected, c.stored, c.kind == 2, let account = selfInfo?.key.hex, let plan = measurementPlan else { error = "Měření vyžaduje správce, neobsazené spojení, 1–6 vzorků a délku nejvýše 6 hodin."; return }
-        measurement = DiagnosticMeasurement(plan:plan); monitoring = true
+        guard !busy, admin, let c = selected, c.stored, c.kind == 2, let account = selfInfo?.key.hex, let plan = measurementPlan else { error = "Měření vyžaduje správce, neobsazené spojení, interval 3–24 hodin, 1–6 vzorků a délku nejvýše 24 hodin."; return }
+        measurement = DiagnosticMeasurement(plan:plan); monitoring = true; monitorNext = measurement?.next
         let run = measurement!.id
         monitorTask = Task { [weak self] in
             while let self, self.monitoring, self.measurement?.id == run, let next = self.measurement?.next {
@@ -44,9 +44,6 @@ extension AppModel {
     func monitorTick(contact c: Contact, now: Date = Date()) async {
         guard monitoring, admin, selectedID == c.id, selected?.stored == true, selected?.kind == 2 else { stopMonitoring(); return }
         if let started = measurement?.start, now < started { stopMonitoring(); error = "Systémový čas se posunul zpět; spusťte nové měření až po opravě času."; return }
-        if measurementRoute == .floodOrUnknown, (measurement?.plan.intervalMinutes ?? 0) < 60 {
-            stopMonitoring(); error = "Trasa už není ověřená. Měření zastaveno; nové měření bez trasy vyžaduje nejméně 60 minut."; return
-        }
         guard measurement?.takeDue(now:now,busy:busy) == true else {
             monitoring = measurement?.running == true; monitorNext = measurement?.next; return
         }

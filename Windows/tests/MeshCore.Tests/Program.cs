@@ -3,12 +3,13 @@ using System.Text.Json;
 using MeshCore.Core;
 using MeshCore.Windows;
 
-internal sealed class Fake : IMeshTransport
+internal sealed class Fake : IMeshTransport, IBleDiagnosticsSource
 {
     public event Action<byte[]>? Received;
     public event Action? Disconnected;
     public int MaximumWriteLength { get; set; } = 176;
     public List<byte[]> Sent { get; } = [];
+    public BleConnectionJournal ConnectionDiagnostics { get; } = new();
     public Action<byte[]>? Handle;
     public Exception? WriteError;
     public void Emit(byte[] frame) => Received?.Invoke(frame);
@@ -177,6 +178,8 @@ internal static partial class Program
         await Test("Ambiguous CLI key prefix blocks transmission", async () => { var (t, m, commands) = await AdminModel(); var second = Key.ToArray(); second[31] = 255; t.Emit(Contact(2, second)); await m.SendCli("ver"); Assert(m.Error != null); Equal(0, commands.Count); });
         await Test("Switching repeater clears prior node tool results", async () => { var (t, m, _) = await AdminModel(c => c.StartsWith("region", StringComparison.Ordinal) ? "REGION-OF-FIRST-NODE" : "OK"); await m.ReadRegions(); Assert(m.RegionText.Contains("REGION-OF-FIRST-NODE")); var other = Enumerable.Repeat((byte)0xee, 32).ToArray(); t.Emit(Contact(2, other)); Assert(await m.SelectNode(Convert.ToHexStringLower(other))); Equal("Nenačteno", m.RegionText); Equal("Nenačteno", m.TelemetryText); });
         await ServiceTrafficTests();
+        await BleConnectionTests();
+        await UsbTests();
         System.Console.WriteLine($"\n{passed} passed, {failed} failed. No BLE or Windows runtime simulated as a hardware test."); return failed == 0 ? 0 : 1;
     }
 }

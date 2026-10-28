@@ -1,6 +1,8 @@
 <Solution>
+  <Project Path="../Shared/MeshCore.Core/MeshCore.Core.csproj" />
+  <Project Path="../Shared/MeshCore.Updates/MeshCore.Updates.csproj" />
   <Folder Name="/src/">
-    <Project Path="src/MeshCore.Core/MeshCore.Core.csproj" />
+
     <Project Path="src/MeshCore.Windows/MeshCore.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">

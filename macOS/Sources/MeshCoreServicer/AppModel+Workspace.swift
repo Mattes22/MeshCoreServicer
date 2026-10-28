@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import MeshCoreKit
 
 extension AppModel {
-    static var appVersion: String { Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "0.8.0" }
+    static var appVersion: String { Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "0.10.0" }
     static var osVersion: String {
         let v = ProcessInfo.processInfo.operatingSystemVersion
         return "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
@@ -23,12 +23,12 @@ extension AppModel {
     }
     @discardableResult func activateProfile(_ info: SelfInfo) -> Bool {
         if let expected = requestedProfileID, expected != info.key.hex {
-            requestedProfileID = nil; ble.disconnect()
+            requestedProfileID = nil; disconnectAll()
             error = "Bluetooth zařízení má jinou veřejnou identitu než vybraný profil. Připojení bylo ukončeno; vyberte zařízení znovu podle skutečné identity."
             return false
         }
         do {
-            let profile = try library.activate(account:info.key.hex,name:info.name,bluetoothID:ble.connectedIdentifier,defaults:initialDeviceOptions)
+            let profile = try library.activate(account:info.key.hex,name:info.name,bluetoothID:companionLink.isUSB ? nil : ble.connectedIdentifier,defaults:initialDeviceOptions)
             if let old = consoleAccount, old != profile.id {
                 selectedID = nil; contacts = []; console = []; command = ""; history = []; verified = [:]; advertReceived = [:]; discovered = [:]
                 logs = []; knownSecrets = []
@@ -43,14 +43,14 @@ extension AppModel {
         } catch { self.error = error.localizedDescription; return false }
     }
     func scanCompanions() { requestedProfileID = nil; ble.scan() }
-    func connectDevice(_ id: UUID) { requestedProfileID = nil; ble.connect(id) }
+    func connectDevice(_ id: UUID) { guard !usbRepeater.busy, !usb.connecting else { return };disconnectAll();companionLink.selectUSB(false);requestedProfileID = nil;ble.connect(id) }
     func connectProfile(_ profile: CompanionProfile) {
-        guard !busy, !ble.connecting else { return }
-        guard let id = profile.bluetoothID else { notice = "Profil nemá uloženou BLE adresu. Vyberte zařízení pomocí skenování."; return }
+        guard !busy, !ble.connecting, !usbRepeater.busy, !usb.connecting else { return }
+        guard let id = profile.bluetoothID else { notice = "Profil nemá uložené BLE zařízení. Pro USB vyberte sériový port v Připojení přes USB; pro BLE použijte skenování."; return }
         guard library.account != profile.id || !ble.ready else { notice = "Tento profil je právě připojený."; return }
         let action = {
-            self.ble.disconnect(); self.library.deactivate(); self.preferences.apply(profile.options)
-            self.requestedProfileID = profile.id; self.ble.connect(id)
+            self.disconnectAll(); self.library.deactivate(); self.preferences.apply(profile.options)
+            self.companionLink.selectUSB(false);self.requestedProfileID = profile.id; self.ble.connect(id)
         }
         if ble.ready || !dirtyKeys.isEmpty {
             confirmation = Confirmation(title:"Přepnout na jiný companion?",message:"Aktuální BLE relace se ukončí. Rozepsané změny repeateru se zahodí, přihlášení správce a diagnostické měření se neobnoví. Nové zařízení se ověří podle veřejné identity.",action:action)
@@ -124,8 +124,10 @@ extension AppModel {
     func reportInput() -> DiagnosticReportInput {
         var input = DiagnosticReportInput()
         input.appVersion = Self.appVersion; input.osVersion = Self.osVersion; input.architecture = Self.architecture
-        input.companionFirmware = deviceInfo?.version ?? ""; input.repeaterFirmware = tools.firmware ?? ""; input.protocolVersion = deviceInfo?.protocolVersion
-        input.connected = ble.ready; input.authenticated = admin; input.reconnectRequired = session.requiresReconnect
+        input.companionFirmware = deviceInfo?.version ?? ""; input.repeaterFirmware = directUSB ? usbRepeater.firmware : tools.firmware ?? ""; input.protocolVersion = deviceInfo?.protocolVersion
+        input.transport = directUSB ? .usbRepeater : companionLink.isUSB ? .usbCompanion : .ble
+        input.usbEvents = usb.diagnostics
+        input.connected = linkReady || usb.ready; input.authenticated = admin; input.reconnectRequired = directUSB ? usbRepeater.session.requiresReconnect : session.requiresReconnect
         input.messages = messages.records.count; input.pendingChanges = operations.current.unverified.count
         input.events = logs.map { ReportEvent(date:$0.date,category:DiagnosticEvent.classify($0.text)) }
         if let scope = hardwareScope {

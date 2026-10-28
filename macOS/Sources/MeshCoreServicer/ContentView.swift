@@ -33,7 +33,7 @@ struct ContentView: View {
                 .toolbar {
                     ToolbarItem(placement:.principal) { connectionBadge }
                     ToolbarItemGroup(placement:.primaryAction) {
-                        if ble.ready { Button { ble.disconnect() } label: { Image(systemName:"eject") }.help("Odpojit companion") }
+                        if model.linkReady || model.usb.ready { Button { model.disconnectAll() } label: { Image(systemName:"eject") }.help("Odpojit companion") }
                         SettingsLink { Image(systemName:"gearshape") }.help("Nastavení aplikace")
                         Button { section = .diagnostics } label: { Image(systemName:"waveform.path.ecg") }.help("Otevřít diagnostiku")
                     }
@@ -91,10 +91,10 @@ struct ContentView: View {
             Divider().padding(.horizontal,16)
             Button { section = .connection } label: {
                 HStack(spacing:10) {
-                    Circle().fill(ble.ready ? Color.teal : Color.secondary).frame(width:7,height:7)
+                    Circle().fill(model.linkReady || model.usb.ready ? Color.teal : Color.secondary).frame(width:7,height:7)
                     VStack(alignment:.leading,spacing:3) {
-                        Text(ble.ready ? model.selfInfo?.name ?? ble.connectedName : "Companion odpojen").font(.callout.weight(.medium)).lineLimit(1)
-                        Text(ble.ready ? "Připojeno přes Bluetooth" : "Vyberte Bluetooth zařízení").font(.caption2).foregroundColor(sidebarSecondary)
+                        Text(model.directUSB ? model.usbRepeater.name : model.linkReady ? model.selfInfo?.name ?? ble.connectedName : "Companion odpojen").font(.callout.weight(.medium)).lineLimit(1)
+                        Text(model.directUSB ? model.usb.state : model.linkReady ? "Připojeno přes \(model.linkLabel)" : "Vyberte BLE nebo USB zařízení").font(.caption2).foregroundColor(sidebarSecondary)
                     }
                     Spacer(minLength:0); Image(systemName:"chevron.right").font(.caption2).foregroundColor(sidebarSecondary)
                 }.padding(18).contentShape(Rectangle())
@@ -104,19 +104,19 @@ struct ContentView: View {
     private var connectionBadge: some View {
         HStack(spacing:8) {
             Image(systemName:"desktopcomputer").foregroundStyle(.secondary)
-            Text("BLE").font(.system(size:9,weight:.bold)).foregroundStyle(.tertiary)
-            Circle().fill(ble.ready ? Color.teal : Color.secondary).frame(width:6,height:6)
-            Text(ble.ready ? model.selfInfo?.name ?? ble.connectedName : "Bez companionu").font(.caption.weight(.medium)).lineLimit(1)
-            if ble.ready, let b = model.battery { Text(String(format:"%.2f V",Double(b)/1000)).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
+            Text(model.linkLabel).font(.system(size:9,weight:.bold)).foregroundStyle(.tertiary)
+            Circle().fill(model.linkReady || model.usb.ready ? Color.teal : Color.secondary).frame(width:6,height:6)
+            Text(model.directUSB ? model.usbRepeater.name+" · USB" : model.linkReady ? (model.selfInfo?.name ?? ble.connectedName)+" · \(model.linkLabel)" : "Bez companionu").font(.caption.weight(.medium)).lineLimit(1)
+            if model.linkReady, let b = model.battery { Text(String(format:"%.2f V",Double(b)/1000)).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
         }.padding(.horizontal,12).padding(.vertical,6).background(.quaternary,in:Capsule())
     }
     @ViewBuilder private var workspace: some View {
         switch section ?? .connection {
-        case .connection: ConnectionWorkspace(model:model,ble:ble,openContacts:{ section = .contacts })
+        case .connection: ConnectionWorkspace(model:model,ble:ble,openContacts:{ section = .contacts },openUSB:{ section = .repeater })
         case .contacts: ContactsWorkspace(model:model,openRepeater:{ section = .repeater },openMessages:{ section = .messages })
         case .messages: MessagesWorkspace(model:model,chat:model.messages)
-        case .repeater: RepeaterWorkspace(model:model,openContacts:{ section = .contacts },openConsole:{ section = .console },tab:repeaterTab,toolsSection:repeaterToolsSection,operationsTab:operationsTab)
-        case .console: ConsoleWorkspace(model:model,openManagement:{ section = .repeater })
+        case .repeater: if model.directUSB { USBRepeaterWorkspace(model:model.usbRepeater,usb:model.usb) } else { RepeaterWorkspace(model:model,openContacts:{ section = .contacts },openConsole:{ section = .console },tab:repeaterTab,toolsSection:repeaterToolsSection,operationsTab:operationsTab) }
+        case .console: if model.directUSB { USBRepeaterWorkspace(model:model.usbRepeater,usb:model.usb) } else { ConsoleWorkspace(model:model,openManagement:{ section = .repeater }) }
         case .diagnostics: DiagnosticsWorkspace(model:model,ble:ble)
         }
     }
@@ -130,7 +130,8 @@ struct ContentView: View {
                 Text("\(model.completedSteps)/\(model.totalSteps)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
             Spacer(minLength:10)
-            Text("BLE → companion · LoRa → repeater").font(.system(size:10,design:.monospaced)).foregroundStyle(.tertiary)
+            Text(AppVersion.display).font(.system(size:12)).foregroundStyle(.secondary).textSelection(.enabled).fixedSize().accessibilityIdentifier("application-version")
+            Text(model.directUSB ? "USB → místní repeater" : "\(model.linkLabel) → companion · LoRa → repeater").font(.system(size:10,design:.monospaced)).foregroundStyle(.tertiary)
         }.padding(.horizontal,20).frame(height:36).background(.bar).overlay(alignment:.top) { Divider() }
     }
 }

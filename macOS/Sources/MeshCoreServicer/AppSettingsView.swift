@@ -19,6 +19,11 @@ struct AppSettingsView: View {
     }
     private var general: some View {
         Form {
+            Section("O aplikaci") {
+                LabeledContent("Verze aplikace") { Text(AppVersion.version).textSelection(.enabled) }
+                LabeledContent("Sestavení") { Text(AppVersion.build).textSelection(.enabled) }
+            }
+            UpdateSettingsSection(updates:model.updates)
             Section("Zprávy a oznámení") {
                 Toggle("Systémová oznámení nových zpráv",isOn:Binding(get:{ preferences.notifications },set:{ value in
                     if !value { preferences.notifications = false; notifications.clearDelivered(); return }

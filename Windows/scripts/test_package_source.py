@@ -34,6 +34,22 @@ class SourcePackageTests(unittest.TestCase):
             self.assertEqual({file.name for file in output.iterdir()},
                              {package.REPO_NAME, package.ZIP_NAME, archive.with_suffix('.sha256').name})
 
+    def test_shared_references_remain_buildable_in_standalone_export(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / 'project'
+            self.fixture(root)
+            project = root / 'src/App/App.csproj'
+            project.parent.mkdir()
+            project.write_text('<Project><ProjectReference Include="../../../Shared/MeshCore.Core/Core.csproj" /></Project>')
+            shared = root.parent / 'Shared/MeshCore.Core'
+            shared.mkdir(parents=True)
+            (shared / 'Core.csproj').write_text('<Project />')
+            output = Path(temp) / 'export'
+            package.prepare(root, output)
+            exported = output / package.REPO_NAME
+            self.assertTrue((exported / 'Shared/MeshCore.Core/Core.csproj').is_file())
+            self.assertIn('../../Shared/', (exported / 'src/App/App.csproj').read_text())
+
     def test_caches_are_excluded_and_private_files_stop_transaction(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / 'project'

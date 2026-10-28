@@ -40,6 +40,7 @@ import Foundation
     public func route(for key: Data) -> ServiceRoute { routes[key] ?? .floodOrUnknown }
     public func beginServiceOperation(valid: @escaping () -> Bool) throws { try traffic.begin(valid:valid) }
     public func endServiceOperation() { traffic.end() }
+    public func reserveDirectRadio() async throws { try await traffic.acquire(route:.floodOrUnknown,progress:onProgress) }
     private func serviceRoute(_ data: Data) -> ServiceRoute? {
         let bytes = [UInt8](data)
         guard let code = bytes.first else { return nil }

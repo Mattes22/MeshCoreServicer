@@ -36,7 +36,11 @@ __pycache__/
 # Distribution artifacts belong in GitHub Releases
 *.dmg
 *.pkg
+*.deb
 *.exe
 *.zip
 *.xcarchive/
 *.dSYM/
+
+# Local release signing secrets never belong to source or web bundles
+.release-secrets/

@@ -10,6 +10,13 @@ struct ConsoleLine: Identifiable { let id = UUID(); let date = Date(); let targe
 enum FieldState { case reading, sending, verifying, confirmed, different, unsupported, failed, uncertain }
 @MainActor final class AppModel: ObservableObject {
     let ble: BluetoothTransport
+    let usb: USBTransport
+    let companionLink: SwitchingMeshTransport
+    let usbRepeater: USBRepeaterModel
+    var companionReady: (() -> Void)?
+    var linkReady: Bool { companionLink.isUSB ? usb.ready && usb.mode == .companion : ble.ready }
+    var directUSB: Bool { companionLink.isUSB && usb.mode == .repeater }
+    var linkLabel: String { companionLink.isUSB ? "USB" : "BLE" }
     let messages: MessagesModel
     let session: MeshSession
     let operations: OperationsModel
@@ -25,9 +32,9 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
     var openMainWindow: (() -> Void)?
     @Published var showMessagesRequested = false
     @Published var monitoring = false
-    @Published var monitorSampleLimit = 3 { didSet { saveProfilePreferences() } }
+    @Published var monitorSampleLimit = DiagnosticPlan.defaultSamples { didSet { saveProfilePreferences() } }
     @Published var measurement: DiagnosticMeasurement?
-    @Published var monitorIntervalMinutes = 30 { didSet { saveProfilePreferences() } }
+    @Published var monitorIntervalMinutes = DiagnosticPlan.defaultIntervalMinutes { didSet { saveProfilePreferences() } }
     @Published var monitorNext: Date?
     @Published var restorePreview: SnapshotComparison?
     var monitorTask: Task<Void,Never>?
@@ -39,6 +46,7 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
     @Published var deviceInfo: DeviceInfo?
     @Published var battery: UInt16?
     @Published var initialized = false
+    let updates = AppUpdates()
     @Published var busy = false
     @Published var progress = "Připraveno"
     @Published var error: String?
@@ -89,13 +97,16 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
     convenience init() { self.init(ble:BluetoothTransport(),archive:ChatArchive.applicationArchive(),operationsArchive:OperationsArchive.applicationArchive(),preferences:AppPreferences(defaults:.standard),notifications:NotificationCoordinator(systemEnabled:true),library:WorkspaceLibrary(defaults:.standard)) }
     init(traffic: ServiceTrafficGovernor? = nil, ble: BluetoothTransport, transport: MeshTransport? = nil, archive: ChatArchive? = nil, operationsArchive: OperationsArchive? = nil, preferences: AppPreferences? = nil, notifications: NotificationCoordinator? = nil, library: WorkspaceLibrary? = nil) {
         self.ble = ble
+        let usb = USBTransport();self.usb = usb
+        let link = SwitchingMeshTransport(ble:ble,usb:usb);self.companionLink = link
         self.operations = OperationsModel(archive:operationsArchive)
         self.preferences = preferences ?? AppPreferences()
         self.notifications = notifications ?? NotificationCoordinator()
         self.library = library ?? WorkspaceLibrary()
         self.initialDeviceOptions = self.preferences.deviceOptions
         self.messages = MessagesModel(archive:archive)
-        self.session = MeshSession(traffic:traffic,transport:transport ?? ble)
+        self.session = MeshSession(traffic:traffic,transport:transport ?? link)
+        self.usbRepeater = USBRepeaterModel(usb:usb,companion:self.session)
         self.preferences.onProfileChange = { [weak self] in self?.saveProfilePreferences() }
         self.preferences.$autoReconnect.sink { [weak ble] value in ble?.automaticReconnect = value }.store(in:&subscriptions)
         self.messages.$records.sink { [weak self] records in
@@ -117,8 +128,9 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
         session.onEvent = { [weak self] in self?.event($0) }
         session.onProgress = { [weak self] in self?.progress = $0 }
         session.onMalformed = { [weak self] in self?.log("Odmítnut neplatný nebo zkrácený protokolový rámec.") }
-        let reset = ble.onDisconnect
-        ble.onDisconnect = { [weak self] in
+        let actualTransport = transport ?? link
+        let reset = actualTransport.onDisconnect
+        actualTransport.onDisconnect = { [weak self] in
             reset?(); guard let self else { return }
             self.messageSyncTask?.cancel(); self.syncRequested = false; self.messages.disconnected()
             self.tools = RepeaterToolsState(); self.liveNotifications = false; self.stopMonitoring(); self.restorePreview = nil
@@ -127,33 +139,54 @@ enum FieldState { case reading, sending, verifying, confirmed, different, unsupp
             self.library.deactivate()
             self.selfInfo = nil; self.deviceInfo = nil; self.battery = nil; self.password = ""
             self.fieldStates = [:]; self.fieldErrors = [:]; self.configDates = [:]; self.restartRequired = false; self.discoveryEnds = nil; self.confirmation = nil
-            self.log("BLE spojení ukončeno; relace správce zrušena.")
+            self.log("Spojení ukončeno; relace správce zrušena.")
         }
-        ble.onReady = { [weak self] in
+        companionReady = { [weak self] in
             guard let self else { return }
             let generation = self.connectionGeneration
             Task { [weak self] in
                 while self?.busy == true && self?.connectionGeneration == generation {
                     try? await Task.sleep(nanoseconds:100_000_000)
                 }
-                guard let self, self.ble.ready, self.connectionGeneration == generation else { return }
+                guard let self, self.linkReady, self.connectionGeneration == generation else { return }
                 self.perform("Načítám informace companionu…") {
+                    do {
                     try await self.session.initialize()
                     guard self.selfInfo != nil else { throw MeshError.invalid("identitu companionu se nepodařilo ověřit") }
                     if let identity = self.selfInfo?.key { await self.messages.activate(account:identity.hex); await self.operations.activate(account:identity.hex); self.operations.select(self.selectedID) }
-                    guard self.ble.ready, self.connectionGeneration == generation else { throw MeshError.disconnected }
+                    guard self.linkReady, self.connectionGeneration == generation else { throw MeshError.disconnected }
                     if let count = self.deviceInfo?.maxChannels { try await self.session.channels(count:count) }
-                    guard self.ble.ready, self.connectionGeneration == generation else { throw MeshError.disconnected }
+                    guard self.linkReady, self.connectionGeneration == generation else { throw MeshError.disconnected }
                     self.initialized = true; self.requestMessageSync()
                     self.log("Načteny informace companionu. Žádná LoRa operace nebyla automaticky spuštěna.")
+                    } catch {if self.companionLink.isUSB {self.usb.disconnect()};throw error}
                 }
             }
+        }
+        ble.onReady = { [weak self] in self?.companionReady?() }
+        usb.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in:&subscriptions)
+        usbRepeater.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in:&subscriptions)
+        usbRepeater.confirm = { [weak self] title,message,action in
+            self?.confirmation = Confirmation(title:title,message:message,action:action)
+        }
+    }
+    func disconnectAll() { stopMonitoring();usb.disconnect();ble.disconnect() }
+    func connectUSB(_ path: String,mode: USBMode) {
+        guard !busy, !usb.connecting, !usbRepeater.busy, !ble.connecting else { return }
+        disconnectAll();companionLink.selectUSB(true);requestedProfileID = nil
+        perform("Připojuji USB zařízení…") {
+            do {
+                try await self.usb.open(path,mode:mode)
+                if mode == .companion { self.companionReady?() }
+                else { try await self.usbRepeater.initialize() }
+            } catch { self.usb.disconnect();throw error }
         }
     }
     func log(_ text: String, level: LogLevel = .info) { logs.append(LogLine(text:text,level:level)); if logs.count > 2000 { logs.removeFirst(logs.count-2000) } }
     func clean(_ text: String) -> String { knownSecrets.filter { !$0.isEmpty }.reduce(text) { $0.replacingOccurrences(of:$1, with:"[skryto]") } }
     func perform(_ title: String, _ action: @escaping () async throws -> Void) {
-        guard !busy else { error = "Probíhá jiná operace. Požadavek nebyl zařazen do fronty."; return }; busy = true; progress = title; error = nil; notice = nil; completedSteps = 0; totalSteps = 0
+        guard !updates.installing else { error = "Probíhá instalace aktualizace; nový požadavek nebyl odeslán."; return }
+        guard !busy, !usbRepeater.busy else { error = "Probíhá jiná operace. Požadavek nebyl zařazen do fronty."; return }; busy = true; progress = title; error = nil; notice = nil; completedSteps = 0; totalSteps = 0
         Task { [self] in defer { busy = false }
             let generation = connectionGeneration, target = selectedID, wasAdmin = admin
             do {

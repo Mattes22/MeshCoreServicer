@@ -1,4 +1,39 @@
-# Ověření Windows portu 0.8.0
+# Ověření 0.9.0 · Windows
+
+26. 10. 2026: 155 testů společného protokolu, aplikační logiky, migrace,
+plánování a fází BLE prošlo. Aktualizace mají samostatných 37 testů bez sítě
+nebo zařízení. WPF Release a samostatné publikace x64/ARM64 prošly.
+Instalátory NSIS byly rozbaleny a porovnány s manifesty pomocí SHA-256.
+
+Dva další izolované procesové scénáře na macOS ověřují průchod pomocníkem,
+restart nové verze a návrat po předčasném ukončení, s nahrazeným poskytovatelem
+dočasného úložiště. Nejsou zkouškou nativních Windows API nebo instalace.
+Fyzické BLE/LoRa, instalace/aktualizace/odinstalace ve Windows, Credential
+Manager, SmartScreen a přechod mezi dvěma vydanými verzemi čekají na ověření.
+Příčina hlášení Dell/T‑Deck Plus/Wadamesh beta není prokázaná.
+
+Následující záznamy popisují předchozí verze.
+
+# Ověření zdrojové verze 0.8.2 pro Windows
+
+Ověřeno 25. 10. 2026: **155 C# testů prošlo**; Windows WPF Release
+cross kompilace na macOS prošla s 0 chybami a 0 varováními. Testy nevysílají
+přes zařízení a nepovažují simulaci za důkaz Windows BLE kompatibility.
+
+Cílená BLE úprava po exportu 0.8.1: úplná uncached GATT enumerace místo
+UUID filtrovaného WinRT dotazu, přesný místní výběr NUS služby, bez retry či
+změn zabezpečení. Čtyři nové regresní testy ověřují HRESULT 0x80070016,
+nezduplikování chyby jako LateFaultObserved a závody při zrušení čekání.
+Dále se ověřuje revize implementace v obou redigovaných exportech.
+Funkčnost této GATT cesty na konkrétním Dellu/T-Decku není prokázaná.
+
+Zdrojová úprava diagnostiky: 4 h × 3, intervaly 3–24 h, nejvýše 6 vzorků
+během 24 h; souběh s ručním servisem používá původní společný rozpočet.
+Automatické testy ověřují i všechny minutové kombinace a migraci starších
+profilů s řízeným časem. Fyzické BLE/LoRa a interaktivní Windows běh
+nebyly provedené. Pro 0.8.2 nevznikl instalátor ani veřejné vydání.
+
+## Dřívější ověření Windows portu 0.8.0
 
 Zdrojová verze 0.8.0: 111 automatických testů prošlo; Release cross kompilace
 WPF na macOS bez chyb a varování. Fyzický BLE/LoRa test a běh WPF ve Windows
@@ -60,3 +95,13 @@ NSIS kompilace x64 i ARM64, kontrola extrahovaného obsahu podle SHA-256
 a nativní architektury aplikace/runtime jsou součástí ověření lokálního vydání.
 Přesné výsledky jsou v přiloženém validačním záznamu. EXE zůstávají nepodepsané;
 Windows instalace, aktualizace, odinstalace a BLE/LoRa nebyly fyzicky vyzkoušené.
+
+## Oprava připojení Windows BLE v 0.8.1
+
+144 automatických testů jádra (z toho 33 nových regresních BLE testů) prošlo;
+Windows WPF Release cross kompilace na macOS prošla bez chyb a varování.
+Fáze a kódy lze exportovat bez úspěšného spojení, bez syrových výjimek a identit.
+[Audit a fyzický postup pro Dell/T-Deck Plus](docs/WINDOWS_BLE.md).
+Přesná příčina hlášeného problému a skutečná kompatibilita Wadamesh beta firmware
+**nejsou prokázané**. Pro 0.8.1 jsou připravené nové lokální instalační balíčky. Původní omezení
+servisního provozu a konečné diagnostické měření zůstávají zachované.

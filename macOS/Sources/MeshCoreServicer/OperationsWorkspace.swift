@@ -22,14 +22,14 @@ struct OperationsWorkspace: View {
         VStack(alignment:.leading,spacing:20) {
             Panel(title:"Časově omezené diagnostické měření",symbol:"waveform.path.ecg",subtitle:"Historie a graf jsou místní. Jejich prohlížení nic nevysílá.") {
                 HStack {
-                    Stepper("Interval: \(max(model.monitorIntervalMinutes,model.measurementRoute.minimumMeasurementMinutes)) min",value:Binding(get:{max(model.monitorIntervalMinutes,model.measurementRoute.minimumMeasurementMinutes)},set:{model.monitorIntervalMinutes = $0}),in:model.measurementRoute.minimumMeasurementMinutes...360,step:15)
+                    Stepper("Interval: \(DiagnosticPlan.hoursText(model.monitorIntervalMinutes))",value:$model.monitorIntervalMinutes,in:DiagnosticPlan.minimumIntervalMinutes...DiagnosticPlan.maximumIntervalMinutes,step:60)
                     Stepper("Vzorky: \(model.monitorSampleLimit)",value:$model.monitorSampleLimit,in:1...6)
                 }.disabled(model.monitoring || model.busy)
                 if let plan = model.measurementPlan {
-                    Text("Plán: \(plan.samples) požadavky na stav, očekávané \(plan.samples) odpovědi; délka \(plan.durationMinutes) minut. První vzorek až za \(plan.intervalMinutes) minut.")
-                } else { Text("Upravte plán: nejvýše 6 vzorků během 6 hodin.").foregroundStyle(.orange) }
-                Text(model.measurementRoute == .known ? "Companion má uloženou platnou trasu. Ta nezaručuje doručení ani neměnné podmínky sítě." : "Flood nebo neznámá trasa: nejmenší interval je 60 minut. Požadavek může přeposlat více uzlů.").font(.caption)
-                Text("Každý vzorek aktivně vyšle požadavek přes LoRa a vyvolá odpověď. Nejde o pasivní příjem. Žádný interval není univerzálně bezpečný. Měření se samo neobnovuje; zpožděné nebo obsazené termíny se přeskočí bez dohánění.").font(.caption).foregroundStyle(.secondary)
+                    Text("Plán: \(plan.samples) požadavky na stav, očekávané \(plan.samples) odpovědi; délka \(DiagnosticPlan.hoursText(plan.durationMinutes)). První vzorek až za \(DiagnosticPlan.hoursText(plan.intervalMinutes)).")
+                } else { Text("Upravte plán: interval 3–24 hodin, nejvýše 6 vzorků a celkem nejvýše 24 hodin.").foregroundStyle(.orange) }
+                Text(model.measurementRoute == .known ? "Companion má uloženou platnou trasu. Ta nezaručuje doručení ani neměnné podmínky sítě." : "Flood nebo neznámá trasa: požadavek může přeposlat více uzlů. I s hodinovými rozestupy zvažte zatížení sítě.").font(.caption)
+                Text("Každý vzorek aktivně vyšle požadavek přes sdílenou LoRa síť a vyvolá odpověď. Výchozí plán: 3 požadavky po 4 h, první za 4 h a poslední za 12 h. Nejde o pasivní příjem. Žádný interval není univerzálně bezpečný. Měření se samo neobnovuje; zpožděné nebo obsazené termíny se přeskočí bez dohánění.").font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Button("Spustit měření") { model.setMonitoring(true) }.disabled(!model.admin || model.busy || model.monitoring || model.measurementPlan == nil)
                     Button("Zastavit") { model.stopMonitoring() }.disabled(!model.monitoring)
@@ -39,7 +39,7 @@ struct OperationsWorkspace: View {
                     ProgressView(value:Double(run.consumed),total:Double(run.plan.samples))
                     Text("\(model.monitoring ? "Probíhá" : "Ukončeno") · termíny \(run.consumed)/\(run.plan.samples) · uloženo \(run.received) · přeskočeno \(run.skipped) · zbývá \(run.remaining)\(run.inFlight ? (run.transmitted ? " · čekám na již odeslaný požadavek" : " · čekám na servisní limit") : "")")
                 }
-                if let next = model.monitorNext { Text("Další termín \(next.formatted(date:.omitted,time:.standard)).").font(.caption) }
+                if let next = model.monitorNext { Text("Další termín \(next.formatted(date:.abbreviated,time:.standard)).").font(.caption) }
                 Text("Ruční servis i měření sdílí limit 60 požadavků za hodinu, z toho 12 bez známé trasy. Každý krok dávky se počítá samostatně; mezi kroky je prodleva 15 s, při floodu nebo neznámé trase 60 s.").font(.caption).foregroundStyle(.secondary)
                 Text("Zastavení zruší další vzorky. Již odeslaný požadavek nelze vzít zpět; jeho časově omezené čekání se dokončí. Po odpojení, spánku, změně uzlu, ztrátě oprávnění nebo chybě je nutné nové výslovné spuštění.").font(.caption).foregroundStyle(.secondary)
             }

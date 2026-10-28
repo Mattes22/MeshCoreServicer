@@ -11,7 +11,6 @@ public enum ServiceRoute: Equatable, Sendable {
         guard let path, path != 255, path >> 6 < 3, Int(path & 63) * (Int(path >> 6)+1) <= bytes else { return .floodOrUnknown }
         return .known
     }
-    public var minimumMeasurementMinutes: Int { self == .known ? 30 : 60 }
 }
 
 /// One application-wide service budget, retained across BLE resets and node switches.
@@ -65,11 +64,21 @@ public enum ServiceRoute: Equatable, Sendable {
 }
 
 public struct DiagnosticPlan: Equatable, Sendable {
+    // Application policy for scheduled diagnostics, independent of manual service pacing.
+    public static let defaultIntervalMinutes = 240
+    public static let defaultSamples = 3
+    public static let minimumIntervalMinutes = 180
+    public static let maximumIntervalMinutes = 1440
+    public static let maximumSamples = 6
+    public static let maximumDurationMinutes = 1440
+    public static func hoursText(_ minutes: Int) -> String {
+        "\(minutes/60) h" + (minutes % 60 == 0 ? "" : " \(minutes % 60) min")
+    }
     public let intervalMinutes: Int
     public let samples: Int
     public var durationMinutes: Int { intervalMinutes*samples }
-    public init(intervalMinutes: Int = 30, samples: Int = 3, route: ServiceRoute) throws {
-        guard (route.minimumMeasurementMinutes...360).contains(intervalMinutes), (1...6).contains(samples), intervalMinutes*samples <= 360 else { throw MeshError.invalid("měření: interval nejméně \(route.minimumMeasurementMinutes) min, 1–6 vzorků, celkem nejvýše 6 hodin") }
+    public init(intervalMinutes: Int = Self.defaultIntervalMinutes, samples: Int = Self.defaultSamples, route: ServiceRoute) throws {
+        guard (Self.minimumIntervalMinutes...Self.maximumIntervalMinutes).contains(intervalMinutes), (1...Self.maximumSamples).contains(samples), intervalMinutes*samples <= Self.maximumDurationMinutes else { throw MeshError.invalid("měření: interval 3–24 hodin, 1–6 vzorků, celkem nejvýše 24 hodin") }
         self.intervalMinutes = intervalMinutes; self.samples = samples
     }
 }

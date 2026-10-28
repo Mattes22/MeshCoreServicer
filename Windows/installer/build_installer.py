@@ -49,13 +49,33 @@ def pe_machine(file):
     return struct.unpack_from('<H', data, offset + 4)[0]
 
 
+def application_folder(publication):
+    if (publication / 'MeshCoreLauncher.exe').is_file():
+        pointer = json.loads((publication / 'current.json').read_text())
+        version = pointer.get('Version', '')
+        if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+            raise ValueError('Invalid managed publication version')
+        app = publication / 'versions' / version
+        if not (app / '.release.json').is_file():
+            raise ValueError('Missing signed release manifest')
+        return app
+    return publication
+
+
 def collect_payload(publication, runtime, nsis_license):
-    if pe_machine(publication / 'MeshCoreServicer.exe') != {'win-x64': 0x8664, 'win-arm64': 0xaa64}[runtime]:
+    app = application_folder(publication)
+    if app != publication:
+        if pe_machine(publication / 'MeshCoreLauncher.exe') != {'win-x64': 0x8664, 'win-arm64': 0xaa64}[runtime]:
+            raise ValueError('Launcher CPU architecture does not match installer')
+        pointer = json.loads((publication / 'current.json').read_text())
+        if pointer.get('Platform') != runtime.replace('win-', 'windows-'):
+            raise ValueError('Launcher platform does not match installer')
+    if pe_machine(app / 'MeshCoreServicer.exe') != {'win-x64': 0x8664, 'win-arm64': 0xaa64}[runtime]:
         raise ValueError('Publication CPU architecture does not match installer')
     for required in ('MeshCoreServicer.dll', 'MeshCore.Core.dll', 'coreclr.dll', 'PresentationFramework.dll'):
-        if not (publication / required).is_file():
+        if not (app / required).is_file():
             raise ValueError(f'Missing required published file: {required}')
-    config = json.loads((publication / 'MeshCoreServicer.runtimeconfig.json').read_text())
+    config = json.loads((app / 'MeshCoreServicer.runtimeconfig.json').read_text())
     frameworks = {f['name'] for f in config['runtimeOptions'].get('includedFrameworks', [])}
     if not {'Microsoft.NETCore.App', 'Microsoft.WindowsDesktop.App'} <= frameworks:
         raise ValueError('Installer requires a self-contained publication including WPF runtime')
@@ -108,7 +128,7 @@ def build(args):
     if not re.fullmatch(r'\d+\.\d+\.\d+', version or ''):
         raise ValueError('Expected a three-component application version')
     arch = args.runtime.removeprefix('win-')
-    deps = json.loads((publication / 'MeshCoreServicer.deps.json').read_text())
+    deps = json.loads((application_folder(publication) / 'MeshCoreServicer.deps.json').read_text())
     if 'MeshCoreServicer/' + version not in deps.get('libraries', {}):
         raise ValueError('Publication version does not match source; publish the app first')
     files = collect_payload(publication, args.runtime, license_file)
@@ -119,7 +139,7 @@ def build(args):
     manifest = {'Product': 'MeshCore Servicer', 'Version': version, 'Architecture': arch,
                 'Files': [{'Path': name, 'Size': file.stat().st_size, 'SHA256': hashlib.sha256(file.read_bytes()).hexdigest()} for name, file in files]}
     prefix = '/' if os.name == 'nt' else '-'
-    defines = {'APP_VERSION': version, 'ARCH': arch, 'OUTPUT_FILE': output, 'APP_ICON': ROOT / 'src/MeshCore.Windows/Assets/AppIcon.ico',
+    defines = {'APP_EXE': 'MeshCoreLauncher.exe' if application_folder(publication) != publication else 'MeshCoreServicer.exe', 'APP_VERSION': version, 'ARCH': arch, 'OUTPUT_FILE': output, 'APP_ICON': ROOT / 'src/MeshCore.Windows/Assets/AppIcon.ico',
                'PAYLOAD_INCLUDE': folder / 'payload.nsh', 'OWNERSHIP_INCLUDE': folder / 'ownership.nsh',
                'PAYLOAD_KIB': sum(f['Size'] for f in manifest['Files']) // 1024 + 256}
     subprocess.run([str(makensis), prefix + 'WX', prefix + 'V3', *(prefix + 'D' + k + '=' + str(v) for k, v in defines.items()), str(Path(__file__).with_name('MeshCoreServicer.nsi'))], check=True)

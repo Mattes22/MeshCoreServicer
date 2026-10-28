@@ -24,7 +24,7 @@ public sealed class SettingField(string key) : Observable
     public DateTimeOffset? ReadAt { get; set; }
     public bool Dirty => Actual != null && !Commands.Same(Key, Actual, Draft);
 }
-public sealed class DeviceOptions
+public sealed class DeviceOptions : IJsonOnDeserialized
 {
     public bool AutoReconnect { get; set; } = true;
     public bool Suggestions { get; set; } = true;
@@ -33,8 +33,15 @@ public sealed class DeviceOptions
     public bool SuggestWrites { get; set; }
     public bool EnterSends { get; set; } = true;
     public int MonitorMinutes { get; set; } = 15; // Legacy: never schedules diagnostics.
-    public int DiagnosticMinutes { get; set; } = 30;
-    public int DiagnosticSamples { get; set; } = 3;
+    public int DiagnosticMinutes { get; set; } = DiagnosticPlan.DefaultIntervalMinutes;
+    public int DiagnosticSamples { get; set; } = DiagnosticPlan.DefaultSamples;
+    public void OnDeserialized()
+    {
+        // Normalize only diagnostic values. Do not restore a running measurement.
+        if (DiagnosticMinutes < DiagnosticPlan.MinimumIntervalMinutes) DiagnosticMinutes = DiagnosticPlan.DefaultIntervalMinutes;
+        if (DiagnosticMinutes is >= DiagnosticPlan.MinimumIntervalMinutes and <= DiagnosticPlan.MaximumIntervalMinutes && DiagnosticSamples is >= 1 and <= DiagnosticPlan.MaximumSamples)
+            DiagnosticSamples = Math.Min(DiagnosticSamples, DiagnosticPlan.MaximumDurationMinutes / DiagnosticMinutes);
+    }
     public void ValidateDiagnostic() { _ = new DiagnosticPlan(DiagnosticMinutes, DiagnosticSamples, ServiceRoute.Known); }
 }
 public sealed class CompanionProfile
@@ -73,6 +80,7 @@ public sealed class LibraryDocument
     public List<Shortcut> Shortcuts { get; set; } = [];
     public List<CommandEvidence> Evidence { get; set; } = [];
     public List<HardwareCheck> Checks { get; set; } = [];
+    public bool CheckUpdates { get; set; } = true;
     public bool Notifications { get; set; }
     public bool Sound { get; set; } = true;
     public bool NotificationText { get; set; }

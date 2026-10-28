@@ -1,6 +1,6 @@
 # Diagnostické měření a provoz LoRa
 
-Implementace pro obě platformy, 25. 10. 2026. Formát MeshCore protokolu se
+Zdrojová verze 0.8.2 pro obě platformy, 25. 10. 2026. Formát MeshCore protokolu se
 nemění; připnuté revize zůstávají v platformních souborech `PROTOCOL.md`.
 
 ## Audit operací
@@ -26,11 +26,18 @@ neznámá trasa i při známé cestě, protože vyvolávají další rádiové v
 
 ## Konečné měření
 
-- Výchozí volba: **3 vzorky po 30 minutách**, plánovaná délka 90 minut.
-- Bez platné cesty v kontaktu companionu je minimum **60 minut**; výchozí
-  plán pak znamená tři požadavky během 180 minut.
-- Nejvýše **6 plánovaných vzorků** a **6 hodin plánované délky**. První
-  požadavek se neposílá při spuštění, až po prvním intervalu.
+- Výchozí volba: **3 vzorky po 4 hodinách**, plánovaná délka **12 hodin**.
+  První požadavek se odešle až 4 hodiny po ručním spuštění, další po 8 a 12
+  hodinách. Měření je standardně vypnuté.
+- Pro známou trasu i flood / neznámou trasu platí interval **3–24 hodin**,
+  nejvýše **6 plánovaných vzorků** a **24 hodin plánované délky**.
+  Každá kombinace musí splnit `interval × počet vzorků ≤ 24 hodin`.
+  Neplatný plán se nespustí. Úložiště zachovává minutovou přesnost;
+  UI interval i celkovou délku zobrazuje v hodinách a případném zbytku minut.
+- UI před spuštěním ukazuje počet požadavků i očekávaných odpovědí a dobu do
+  prvního vzorku. Za běhu také průběh, zbývající vzorky, datum a místní čas
+  příštího termínu a tlačítko Zastavit. Každý vzorek je aktivní LoRa požadavek
+  s odpovědí přes sdílenou síť; nejde o pasivní odposlech.
 - Plán je svázaný s companionem, repeaterem a přihlášením. Stav běhu je
   pouze v paměti. Restart aplikace, změna zařízení, odpojení, spánek,
   ztráta správce nebo chyba měření ukončí; obnovení BLE ho nespustí.
@@ -47,10 +54,26 @@ neznámá trasa i při známé cestě, protože vyvolávají další rádiové v
   180 s a lokální potvrzení má vlastní krátký BLE timeout.
 
 Tři vzorky umožní základní porovnání napětí a uptime bez trvalého sběru.
-Třicetiminutový rozestup omezuje běžný plán na dva dotazy/h; neznámá trasa
-ho snižuje na jeden/h. Šest vzorků a šest hodin jsou tvrdé limity plánu,
-ne cílová frekvence provozu. **Žádný interval není univerzálně bezpečný**:
-záleží na airtime, zatížení sítě, délce trasy, rádiu a odpovědích uzlu.
+Výchozí čtyřhodinový rozestup reaguje na komunitní podnět prodloužit pravidelné
+čtení na 3–4 hodiny: uživatelé často ponechávají předvolby. Jde o rozhodnutí
+aplikace, **nikoliv pravidlo protokolu**. Výchozí plán tak rozloží tři požadavky
+a odpovědi do dvanácti hodin místo původních 90/180 minut. Šest vzorků a 24 hodin
+jsou stropy plánu, ne cílová frekvence provozu. **Žádný interval, ani 4 hodiny,
+není univerzálně bezpečný**: záleží na airtime, zatížení sítě, délce trasy,
+rádiu a odpovědích uzlu. Flood může násobit přeposílání i při stejném plánu.
+
+| Počet vzorků | Nejdelší povolený interval | Nejdelší plán |
+|---|---|---|
+| 1 | 24 h | 24 h |
+| 2 | 12 h | 24 h |
+| 3 | 8 h | 24 h |
+| 4 | 6 h | 24 h |
+| 5 | 4 h 48 min | 24 h |
+| 6 | 4 h | 24 h |
+
+Minimum zůstává 3 h pro každý řádek. Například 4 h × 6 je platné,
+5 h × 6 není. Tento rozsah se týká pouze plánovaných diagnostických vzorků;
+ruční Načíst stav jednou, přihlášení nebo změna konfigurace nečekají 3–4 hodiny.
 
 ## Společný servisní rozpočet
 
@@ -92,16 +115,29 @@ přímý dosah. 255, chybějící nebo neplatné údaje se považují za neznám
 trasu. Advert / změna cesty zneplatní příslušný cache záznam do lokálního
 načtení kontaktu. Pokud SENT hlásí flood, aktuální požadavek se přeznačí
 na flood a cache tras se konzervativně zneplatní. Dřívější známá cesta
-nezaručuje budoucí směrování. Pokud plán po 30 minutách přijde o známou
-trasu, ukončí se; delší plán musí uživatel výslovně spustit.
+nezaručuje budoucí směrování. Ztráta známé trasy nemění interval plánu, protože hodinové minimum je společné.
+Každý skutečně odeslaný krok se však účtuje podle aktuální trasy: při floodu
+platí přísnější ruční rozpočet a prodleva. Změna cílového zařízení či relace
+měření nadále zastaví.
 
 ## Migrace a ověření
 
 Historie zpráv, vzorky stavu a snímky nemění formát ani úložiště. Starý
 `monitorMinutes` / `MonitorMinutes` zůstává zachovaný jako neaktivní
 legacy údaj. Nová pole `diagnosticMinutes` / `DiagnosticMinutes` a
-`diagnosticSamples` / `DiagnosticSamples` mají při chybění hodnoty 30 a 3.
-Ostatní preference se zachovají. Ani uložený plán není povolením ke spuštění.
+`diagnosticSamples` / `DiagnosticSamples` mají při chybění hodnoty **240 minut a 3**.
+Při dekódování se intervaly kratší než 180 minut převedou na 240 minut ve
+výchozích volbách i ve všech existujících, také neaktivních profilech.
+Platné intervaly 180–1440 minut včetně minutové přesnosti se zachovají.
+Pokud by zachovaný interval s počtem vzorků překročil 24 hodin, sníží se pouze
+počet vzorků na `min(původní počet, floor(1440 / interval))`; interval má přednost.
+Ostatní neplatná data nadále podléhají ochraně poškozeného souboru před přepsáním.
+
+Migrace je hodnotová a idempotentní. Normalizované volby se zapíšou při běžném
+uložení preferencí; jejich opětovné načtení nepřinese další změnu. Historie,
+identity profilů, aliasy, zkratky a ostatní preference se nemění. Staré hodnoty
+`monitoring` / `Monitoring` se nečtou jako souhlas se spuštěním; aktivní plán
+nikdy není součástí serializovaných voleb. Ani uložený plán není povolením ke spuštění.
 
 Testy používají falešný čas a transport. Ověřují konečný plán, prodlevu
 prvního vzorku, limity, přeskočení, chyby, ztrátu oprávnění, souběh,
@@ -114,15 +150,31 @@ trasy; číselné stropy jsou posouzené pro ruční desktopový servis. Automat
 retry, route healing, trvalý polling ani obnovování rozběhnutého plánu se
 z tohoto podkladu nepřebírají.
 
-## Provedené ověření této úpravy (25. 10. 2026)
+## Ověření 0.8.2
 
-- Swift: 151 automatických testů (79 protokol / politika, 72 aplikační logika).
-- C#: 111 automatických testů jádra, plánování, souběhu a migrace.
-- Python: 25 testů zdrojového a instalačního balení; instalátory se nevytvářely.
-- Xcode Release sestavení arm64 + x86_64 do dočasné složky, bez podpisu vydání.
-- Windows/WPF cross kompilace na macOS: 0 chyb, 0 varování.
+Automatické testy s řízeným časem ověřují 4 h × 3, přesnou první prodlevu,
+termíny 4/8/12 hodin, ukončení, plán 24 h × 1, všechny minutové kombinace
+intervalů 180–1440 a počtů 1–6, neplatné hranice a migraci profilů z 0.8.0/0.8.1.
+Zůstávají testy chyb, souběhu, servisního rozpočtu, místního BLE čtení,
+zastavení a nepřítomnosti automatického obnovení. Testy nečekají skutečné
+hodiny a nevysílají přes BLE ani LoRa. Prošlo 158 Swift testů a 155 C# testů; univerzální Xcode Release arm64/x86_64
+a Windows WPF Release cross kompilace prošly. Podrobnosti a meze jsou uvedené
+v platformních souborech `COMPATIBILITY.md`.
 
-Testovací transporty a virtuální čas nevysílají přes BLE ani LoRa.
-Skutečný T114, repeater, airtime, uspání/probuzení a interaktivní vykreslení
-Windows této úpravy nebyly fyzicky ověřené. Stávající instalační balíčky a
-ZIPy zůstávají dřívějšími sestaveními. Nic nebylo publikované ani commitnuté.
+Skutečný T114, T-Deck, repeater, airtime, uspání/probuzení a interaktivní běh
+Windows této úpravy nebyly fyzicky ověřené. Instalační balíčky 0.8.1 a starší
+zůstávají původními sestaveními; pro 0.8.2 se instalační vydání nevytváří.
+
+## Linux a aktualizace 0.9.0
+
+Linux používá stejné diagnostické plány a servisní rozpočet jako Windows.
+Výchozí plán zůstává 4 h × 3, nejvýše 6 vzorků/24 h. Aktualizace měření
+zastaví; po restartu ho neobnovuje. Kontrola verzí používá internetové HTTPS
+spojení, nikoli LoRa. Prohlížení historie zůstává místní.
+
+## USB od 0.10.0
+
+USB companion používá pro vzdálené LoRa kroky stejné limity jako BLE.
+Přímá místní správa USB repeateru nevyvolává pravidelné dotazy; čtení konfigurace
+a statistik nevyužívá LoRa. Ručně potvrzený advert/discovery se účtuje
+do společného servisního rozpočtu. Přepnutí transportu a spánek ruší měření.

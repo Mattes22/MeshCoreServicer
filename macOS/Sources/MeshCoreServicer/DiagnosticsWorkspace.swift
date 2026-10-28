@@ -20,7 +20,7 @@ struct DiagnosticsWorkspace: View {
                 }
             }
             HStack(alignment:.top,spacing:14) {
-                diagnosticSummary("BLE transport",value:ble.ready ? "Připojeno" : "Odpojeno",symbol:"cable.connector",color:ble.ready ? .teal : .secondary)
+                diagnosticSummary("Transport companionu",value:model.directUSB ? model.usb.state : model.linkReady ? model.linkLabel+" připojeno" : "Odpojeno",symbol:"cable.connector",color:model.linkReady ? .teal : .secondary)
                 diagnosticSummary("Companion protokol",value:model.deviceInfo.map { "v\($0.protocolVersion)" } ?? "Nenačteno",symbol:"shippingbox",color:.secondary)
                 diagnosticSummary("Události v relaci",value:"\(model.logs.count)",symbol:"list.bullet.rectangle",color:.secondary)
             }

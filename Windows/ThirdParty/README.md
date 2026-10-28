@@ -5,3 +5,6 @@ Binární distribuce přikládá oficiální .NET 10.0.12 a Windows Desktop runt
 Windows API projekce poskytuje oficiální Microsoft.Windows.SDK.NET.Ref 10.0.19041.57 / WinRT.Runtime. [Podmínky Windows SDK](https://aka.ms/WinSDKLicenseURL), [projekt C#/WinRT](https://github.com/microsoft/CsWinRT).
 
 Protokolové zdroje MeshCore a meshcore.js jsou referenční dokumentace; firmware, jejich spustitelné soubory ani JavaScript nejsou součástí aplikace. Přesné revize jsou uvedené v PROTOCOL.md. Ikona používá vlastní geometrický motiv stávající macOS aplikace, převedený do ICO.
+
+- System.IO.Ports 10.0.0 (Microsoft / .NET Foundation), MIT; nativní sériové I/O USB.
+  https://www.nuget.org/packages/System.IO.Ports/10.0.0

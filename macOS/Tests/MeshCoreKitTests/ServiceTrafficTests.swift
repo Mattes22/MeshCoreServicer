@@ -8,9 +8,9 @@ import XCTest
         XCTAssertEqual(ServiceRoute.classify(path:0),.known)
         XCTAssertEqual(ServiceRoute.classify(path:0x83),.known)
         for path: UInt8 in [255,0xc1,0x7f] { XCTAssertEqual(ServiceRoute.classify(path:path),.floodOrUnknown) }
-        XCTAssertEqual(try DiagnosticPlan(route:.known).durationMinutes,90)
+        XCTAssertEqual(try DiagnosticPlan(route:.known).durationMinutes,720)
         XCTAssertThrowsError(try DiagnosticPlan(intervalMinutes:30,samples:3,route:.floodOrUnknown))
-        XCTAssertEqual(try DiagnosticPlan(intervalMinutes:60,samples:6,route:.floodOrUnknown).durationMinutes,360)
+        XCTAssertEqual(try DiagnosticPlan(intervalMinutes:180,samples:6,route:.floodOrUnknown).durationMinutes,1080)
         for count in [0,7,Int.max] { XCTAssertThrowsError(try DiagnosticPlan(intervalMinutes:60,samples:count,route:.known)) }
         XCTAssertThrowsError(try DiagnosticPlan(intervalMinutes:120,samples:4,route:.known))
     }
@@ -18,11 +18,11 @@ import XCTest
         let start = Date(timeIntervalSince1970:0), plan = try DiagnosticPlan(route:.known)
         var run = DiagnosticMeasurement(plan:plan,start:start)
         XCTAssertFalse(run.takeDue(now:start,busy:false))
-        XCTAssertTrue(run.takeDue(now:start.addingTimeInterval(1800),busy:false)); run.finish(success:true)
-        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(3600),busy:true))
-        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(5500),busy:false))
+        XCTAssertTrue(run.takeDue(now:start.addingTimeInterval(14400),busy:false)); run.finish(success:true)
+        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(28800),busy:true))
+        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(43300),busy:false))
         XCTAssertEqual(run.received,1); XCTAssertEqual(run.skipped,2); XCTAssertEqual(run.remaining,0); XCTAssertFalse(run.running)
-        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(7200),busy:false))
+        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(57600),busy:false))
     }
     func testErrorStopAndInflightStopNeverScheduleAnotherRequest() throws {
         let start = Date(), plan = try DiagnosticPlan(route:.known)
@@ -32,6 +32,58 @@ import XCTest
         var failed = DiagnosticMeasurement(plan:plan,start:start)
         XCTAssertTrue(failed.takeDue(now:failed.next!,busy:false)); failed.finish(success:false)
         XCTAssertFalse(failed.running); XCTAssertEqual(failed.consumed,1); XCTAssertEqual(failed.received,0)
+    }
+    func testDefaultFourHourPlanUsesThreeSlotsThroughTwelveHours() throws {
+        let start = Date(timeIntervalSince1970:0), plan = try DiagnosticPlan(route:.floodOrUnknown)
+        XCTAssertEqual(plan.intervalMinutes,240); XCTAssertEqual(plan.samples,3); XCTAssertEqual(plan.durationMinutes,720)
+        var run = DiagnosticMeasurement(plan:plan,start:start)
+        XCTAssertEqual(run.next,start.addingTimeInterval(4*3600))
+        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(4*3600-1),busy:false))
+        for hour in [4,8,12] {
+            XCTAssertEqual(run.next,start.addingTimeInterval(Double(hour*3600)))
+            XCTAssertTrue(run.takeDue(now:run.next!,busy:false)); run.finish(success:true)
+        }
+        XCTAssertFalse(run.running); XCTAssertNil(run.next); XCTAssertEqual(run.received,3)
+        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(24*3600),busy:false))
+    }
+    func testEveryMinuteAndSampleCombinationObeysTwentyFourHourCap() throws {
+        for route: ServiceRoute in [.known,.floodOrUnknown] {
+            for minutes in 180...1440 {
+                for count in 1...6 {
+                    if minutes*count <= 1440 {
+                        XCTAssertEqual(try DiagnosticPlan(intervalMinutes:minutes,samples:count,route:route).durationMinutes,minutes*count)
+                    } else { XCTAssertThrowsError(try DiagnosticPlan(intervalMinutes:minutes,samples:count,route:route)) }
+                }
+            }
+        }
+        for minutes in [Int.min,-1,0,179,1441,Int.max] { XCTAssertThrowsError(try DiagnosticPlan(intervalMinutes:minutes,samples:1,route:.known)) }
+        XCTAssertEqual(try DiagnosticPlan(intervalMinutes:1440,samples:1,route:.known).durationMinutes,1440)
+        XCTAssertEqual(try DiagnosticPlan(intervalMinutes:240,samples:6,route:.known).durationMinutes,1440)
+        XCTAssertThrowsError(try DiagnosticPlan(intervalMinutes:241,samples:6,route:.known))
+    }
+    func testAllDayMeasurementFinishesAndLateLastSlotIsNeverReplayed() throws {
+        let start = Date(timeIntervalSince1970:0), plan = try DiagnosticPlan(intervalMinutes:1440,samples:1,route:.known)
+        var run = DiagnosticMeasurement(plan:plan,start:start)
+        XCTAssertFalse(run.takeDue(now:start.addingTimeInterval(24*3600-1),busy:false))
+        XCTAssertTrue(run.takeDue(now:run.next!,busy:false)); run.finish(success:true)
+        XCTAssertFalse(run.running); XCTAssertEqual(run.received,1)
+        var late = DiagnosticMeasurement(plan:plan,start:start)
+        XCTAssertFalse(late.takeDue(now:start.addingTimeInterval(24*3600+31),busy:false))
+        XCTAssertFalse(late.running); XCTAssertEqual(late.skipped,1); XCTAssertNil(late.next)
+    }
+    func testDiagnosticPreferenceMigrationPreservesValidIntervalsAndIsIdempotent() throws {
+        for minutes in [5,30,60,179,180,181,240,360,480,1440] {
+            let json = "{\"diagnosticMinutes\":\(minutes),\"diagnosticSamples\":3,\"monitorMinutes\":5,\"suggestions\":false,\"autoReconnect\":false}"
+            let options = try JSONDecoder().decode(DevicePreferences.self,from:Data(json.utf8))
+            let expected = minutes < 180 ? 240 : minutes
+            XCTAssertEqual(options.diagnosticMinutes,expected)
+            XCTAssertEqual(options.diagnosticSamples,min(3,1440/expected))
+            XCTAssertEqual(options.monitorMinutes,5); XCTAssertFalse(options.autoReconnect); XCTAssertFalse(options.suggestions)
+            _ = try DiagnosticPlan(intervalMinutes:options.diagnosticMinutes,samples:options.diagnosticSamples,route:.floodOrUnknown)
+            XCTAssertEqual(try JSONDecoder().decode(DevicePreferences.self,from:JSONEncoder().encode(options)),options)
+        }
+        XCTAssertEqual(DevicePreferences().diagnosticMinutes,240)
+        XCTAssertEqual(DiagnosticPlan.hoursText(240),"4 h"); XCTAssertEqual(DiagnosticPlan.hoursText(181),"3 h 1 min")
     }
     func testBudgetsAreSharedAcrossScopesAndSpacingDependsOnRoute() async throws {
         let c = Clock(), g = governor(c)
@@ -81,7 +133,7 @@ import XCTest
     func testLegacyPreferencesPreserveOtherValuesButUseNewDefaults() throws {
         let data = Data(#"{"autoReconnect":false,"monitorMinutes":5,"suggestions":false}"#.utf8)
         let options = try JSONDecoder().decode(DevicePreferences.self,from:data)
-        XCTAssertEqual(options.monitorMinutes,5); XCTAssertEqual(options.diagnosticMinutes,30); XCTAssertEqual(options.diagnosticSamples,3)
+        XCTAssertEqual(options.monitorMinutes,5); XCTAssertEqual(options.diagnosticMinutes,240); XCTAssertEqual(options.diagnosticSamples,3)
         XCTAssertFalse(options.autoReconnect); XCTAssertFalse(options.suggestions)
         XCTAssertEqual(try JSONDecoder().decode(DevicePreferences.self,from:JSONEncoder().encode(options)),options)
     }

@@ -7,13 +7,31 @@ Skutečné NSIS `.exe` instalátory, český průvodce, samostatný balíček x6
 - Instalaci pouze pro aktuální účet do `%LOCALAPPDATA%\Programs\MeshCore Servicer`, bez správce a bez samostatné instalace .NET.
 - Povinného zástupce aplikace a odinstalace v nabídce Start, volitelného zástupce na ploše.
 - Záznam v Nastavení Windows → Aplikace, s verzí a odinstalací.
-- Aktualizaci/opravu spuštěním stejného nebo novějšího instalátoru. Starší verze je odmítnuta. Žádné automatické vyhledávání nebo stahování aktualizací.
+- Aktualizaci/opravu spuštěním stejného nebo novějšího instalátoru. Starší verze je odmítnuta. Instalátor sám aktualizace nevyhledává. Distribuce od 0.9.0 má vlastní potvrzovaný aktualizační klient.
 - Kontrolu běžící aplikace včetně oznamovací oblasti, bez násilného ukončení procesu. Instalační proces drží stejný mutex jako aplikace, aby se během zápisu nespustila další instance. Při volitelném spuštění na závěrečné stránce se zámek uvolní.
 - Odinstalaci jen souborů evidovaných jako součást instalace. Přidané soubory a neprázdné adresáře se rekurzivně nemažou. Seznam se při aktualizaci doplňuje, aby odinstalace znala i soubory z předchozích vydání. Osobní historie/profily v `%LOCALAPPDATA%\MeshCoreServicer` a položky Credential Manageru se nemažou. Přenosná ZIP kopie se neodinstaluje.
 
 Instalátor nekomunikuje s BLE/LoRa, nespouští aplikaci bez zaškrtnutí volby a nezapisuje firmware ani nastavení zařízení. Cílová složka je pevná; přepínač `/D` se záměrně nepoužívá. Při chybě kopírování se instalace zastaví. Opravu lze zopakovat; nejde o transakční MSI s automatickým rollbackem. Před aktualizací ukončete aplikaci v oznamovací oblasti.
 
 Balíčky **nejsou digitálně podepsané**. Windows proto může zobrazit neznámého vydavatele/SmartScreen. Není přiložený vydavatelský certifikát ani předstíraný podpis. Před veřejnou distribucí lze EXE podepsat vlastním důvěryhodným certifikátem; po podpisu je nutné znovu spočítat SHA-256.
+
+## Struktura vydání 0.9.0
+
+Zástupci míří na stabilní `MeshCoreLauncher.exe`. Podepsaná aplikace a její
+runtime jsou v `versions/0.9.0`; `current.json` vybírá aktivní verzi. Launcher
+ověřuje ECDSA manifest a SHA-256 souborů. Nové verze se připravují odděleně,
+původní proces se ukončí a teprve potom se přepne ověřená verze. Podpis
+manifestu není Authenticode podpis EXE.
+
+`tools/package_release.py` z kořene kompletního repozitáře sestaví tuto strukturu
+z app/launcher publikací a vydavatelského klíče. Do `build_installer.py --publish`
+se předává výsledná složka. Privátní klíč se do ní nekopíruje. První přechod
+z 0.8.x vyžaduje instalátor, další potvrzené aktualizace stahují jen změněné
+soubory. [Podrobnosti](../../docs/UPDATES.md).
+
+Níže uvedený `build.ps1 -Installer` bez podepisování manifestu vytváří přímé
+vývojové sestavení; nemá strukturu pro samostatné aktualizace. Nepředstavuje
+podepsanou distribuci původního vydavatele.
 
 ## Sestavení
 
@@ -39,14 +57,14 @@ Na Macu může být potřeba nastavit `NSISDIR` na složku obsahující `Include
 
 ## Ověření a jeho omezení
 
-Zde na macOS prošlo osm testů generátoru, obě skutečné kompilace NSIS s varováními jako chybami, rozbalení instalátorů pomocí 7-Zip a porovnání SHA-256 všech vložených souborů x64 a ARM64 (včetně NSIS licence). Obsah aplikace odpovídá již sestavené verzi 0.8.0 se 111 testy jádra. Kontrola zahrnuje skutečnou architekturu aplikace/runtime, uninstaller a nepřítomnost osobních údajů v balíčku. Nevydáváme statickou kontrolu za provedenou instalaci.
+Zde na macOS prošlo osm testů generátoru, obě skutečné kompilace NSIS s varováními jako chybami, rozbalení instalátorů pomocí 7-Zip a porovnání SHA-256 všech vložených souborů x64 a ARM64 (včetně NSIS licence). Obsah aplikace odpovídá již sestavené verzi 0.8.1 se 144 testy jádra. Kontrola zahrnuje skutečnou architekturu aplikace/runtime, uninstaller a nepřítomnost osobních údajů v balíčku. Nevydáváme statickou kontrolu za provedenou instalaci.
 
 **Běh průvodce, změny registru, zástupci, aktualizace, odinstalace a SmartScreen zde na Windows nebyly vyzkoušené.** Pro kontrolu v čistém účtu/VM Windows je přiložen skript:
 
 ```powershell
 .\installer\verify-installer.ps1 `
-  -Installer '.\out\MeshCoreServicer-0.8.0-Windows-x64-Setup.exe' `
-  -PayloadManifest '.\out\MeshCoreServicer-0.8.0-Windows-x64-Setup.payload.json' `
+  -Installer '.\out\MeshCoreServicer-0.8.1-Windows-x64-Setup.exe' `
+  -PayloadManifest '.\out\MeshCoreServicer-0.8.1-Windows-x64-Setup.payload.json' `
   -DisposableTestEnvironment
 ```
 

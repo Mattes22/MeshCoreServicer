@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/MeshCore.Linux/MeshCore.Linux.csproj" />
+  <Project Path="tests/MeshCore.Linux.Tests/MeshCore.Linux.Tests.csproj" />
+  <Project Path="../Shared/MeshCore.Core/MeshCore.Core.csproj" />
+  <Project Path="../Shared/MeshCore.Updates/MeshCore.Updates.csproj" />
+  <Project Path="../Shared/MeshCore.Launcher/MeshCore.Launcher.csproj" />
+</Solution>

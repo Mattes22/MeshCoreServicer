@@ -21,7 +21,7 @@ public sealed record BleDevice(ulong Address, string Name, short Rssi)
     public override string ToString() => Display;
 }
 public sealed record PairingPrompt(string Kind, string Pin);
-public sealed class BleTransport(Dispatcher dispatcher) : IMeshTransport, IDisposable
+public sealed class BleTransport : IMeshTransport, IBleDiagnosticsSource, IDisposable
 {
     public event Action<byte[]>? Received;
     public event Action? Disconnected;
@@ -31,24 +31,24 @@ public sealed class BleTransport(Dispatcher dispatcher) : IMeshTransport, IDispo
     public bool IsPairing => pairingBusy;
     public ObservableCollection<BleDevice> Devices { get; } = new();
     public string State { get; private set; } = "Odpojeno";
-    public bool Ready => tx != null && rx != null;
+    private readonly Dispatcher dispatcher;
+    private readonly BleConnectionFlow connection = new();
+    public BleConnectionJournal ConnectionDiagnostics => connection.Journal;
+    public string? ConnectionError => connection.LastFailure?.Message;
+    public bool IsConnecting => connection.Connecting;
+    public bool Ready => connection.TransportReady;
     public bool Scanning => watcher?.Status == BluetoothLEAdvertisementWatcherStatus.Started;
-    public int MaximumWriteLength => Math.Min(176, Math.Max(0, (session?.MaxPduSize ?? 23) - 3));
+    public int MaximumWriteLength => (connection.Driver as NativeBleConnection)?.MaximumWriteLength ?? 20;
     private BluetoothLEAdvertisementWatcher? watcher;
-    private BluetoothLEDevice? device;
-    private GattSession? session;
-    private GattDeviceService? service;
-    private GattCharacteristic? rx, tx;
-    private int generation;
+    public BleTransport(Dispatcher dispatcher)
+    {
+        this.dispatcher = dispatcher;
+        connection.ResetTransport += () => Disconnected?.Invoke();
+        connection.Changed += () => Status(connection.Connecting ? "Připojuji · " + BleText.Stage(connection.Stage) + "…" : connection.LastFailure != null ? "Připojení selhalo · " + connection.LastFailure.Id : Ready ? "BLE připojeno · MeshCore ověřeno" : "Odpojeno");
+    }
     private readonly System.Collections.Generic.Dictionary<ulong, string> advertisedNames = new();
     private readonly System.Collections.Generic.HashSet<ulong> compatibleAddresses = new();
-    private readonly SemaphoreSlim connecting = new(1, 1);
     private void Status(string value) { State = value; Changed?.Invoke(); }
-    private static void Success(GattCommunicationStatus result)
-    {
-        if (result == GattCommunicationStatus.Success) return;
-        throw new MeshException(result == GattCommunicationStatus.AccessDenied ? "Windows odmítl přístup. Zkontrolujte oprávnění Bluetooth a systémové párování (PIN z displeje zařízení)." : result == GattCommunicationStatus.Unreachable ? "Companion není dostupný. Přibližte jej a odpojte MeshCore aplikaci v telefonu; BLE může být obsazené." : "Chyba GATT protokolu; zkuste obnovit BLE spojení.");
-    }
     public async Task Scan()
     {
         StopScan(); var adapter = await BluetoothAdapter.GetDefaultAsync();
@@ -71,10 +71,15 @@ public sealed class BleTransport(Dispatcher dispatcher) : IMeshTransport, IDispo
     }
     private void WatcherStopped(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementWatcherStoppedEventArgs e)
     { dispatcher.BeginInvoke(() => { if (ReferenceEquals(sender, watcher) && e.Error != BluetoothError.Success) Status("Skenování zastaveno: " + e.Error + ". Zkontrolujte Bluetooth a oprávnění Windows."); }); }
-    public void StopScan() { if (watcher == null) return; watcher.Received -= Advertisement; watcher.Stopped -= WatcherStopped; watcher.Stop(); watcher = null; Changed?.Invoke(); }
+    public void StopScan()
+    {
+        var old = watcher; watcher = null; if (old == null) return;
+        try { old.Received -= Advertisement; old.Stopped -= WatcherStopped; }
+        finally { try { old.Stop(); } finally { Changed?.Invoke(); } }
+    }
     public async Task Pair(ulong address)
     {
-        if (pairingBusy || Ready) throw new MeshException("Odpojte companion a dokončete předchozí párování.");
+        if (pairingBusy || Ready || IsConnecting) throw new MeshException("Odpojte companion a dokončete předchozí párování.");
         pairingBusy = true; Status("Systémové párování Bluetooth…");
         try
         {
@@ -106,66 +111,16 @@ public sealed class BleTransport(Dispatcher dispatcher) : IMeshTransport, IDispo
         catch { _ = dispatcher.BeginInvoke(() => Status("Párování nebylo dokončeno; zkuste Nastavení Windows.")); }
         finally { deferral.Complete(); }
     }
-    public async Task Connect(ulong address)
+    public async Task Connect(ulong address, Func<Task> initialize)
     {
         if (pairingBusy) throw new MeshException("Nejprve dokončete systémové párování.");
-        if (!await connecting.WaitAsync(0)) throw new MeshException("Připojení již probíhá.");
-        Disconnect(); var epoch = generation; StopScan(); Status("Připojuji companion…");
-        try
-        {
-            var candidate = await AwaitNative(BluetoothLEDevice.FromBluetoothAddressAsync(address).AsTask(), d => d?.Dispose());
-            if (candidate == null) throw new MeshException("Companion není dostupný nebo Windows odmítl oprávnění Bluetooth.");
-            if (epoch != generation) { candidate.Dispose(); throw new OperationCanceledException(); }
-            device = candidate;
-            var access = await device.RequestAccessAsync(); if (epoch != generation) throw new OperationCanceledException(); if (access != DeviceAccessStatus.Allowed) throw new MeshException("Přístup Bluetooth není povolen: " + access + ". Povolte jej v Nastavení Windows; při požadavku zařízení proveďte systémové párování.");
-            var nativeSession = await GattSession.FromDeviceIdAsync(device.BluetoothDeviceId);
-            if (epoch != generation) { nativeSession?.Dispose(); throw new OperationCanceledException(); }
-            session = nativeSession ?? throw new MeshException("Windows neposkytl GATT relaci."); if (session.CanMaintainConnection) session.MaintainConnection = true;
-            var services = await AwaitNative(device.GetGattServicesForUuidAsync(Codec.Service, BluetoothCacheMode.Uncached).AsTask(), r => { foreach (var s in r.Services) s.Dispose(); });
-            if (epoch != generation) { foreach (var s in services.Services) s.Dispose(); throw new OperationCanceledException(); }
-            Success(services.Status); service = services.Services.FirstOrDefault() ?? throw new MeshException("Zařízení neposkytuje MeshCore Nordic UART službu."); foreach (var s in services.Services.Skip(1)) s.Dispose();
-            var chars = await service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached).AsTask().WaitAsync(TimeSpan.FromSeconds(20)); Success(chars.Status);
-            if (epoch != generation) throw new OperationCanceledException();
-            rx = chars.Characteristics.FirstOrDefault(c => c.Uuid == Codec.Rx && c.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Write));
-            tx = chars.Characteristics.FirstOrDefault(c => c.Uuid == Codec.Tx && c.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Notify));
-            if (rx == null || tx == null) throw new MeshException("Chybí zapisovací RX nebo notifikační TX charakteristika.");
-            tx.ValueChanged += ValueChanged;
-            Success(await tx.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask().WaitAsync(TimeSpan.FromSeconds(20)));
-            for (int n = 0; n < 30 && MaximumWriteLength < 176; n++) { await Task.Delay(100); if (epoch != generation) throw new OperationCanceledException(); }
-            if (MaximumWriteLength < 176) throw new MeshException("Windows nevyjednal BLE MTU pro celý rámec 176 bajtů (ATT MTU alespoň 179). Aktualizujte ovladač adaptéru a firmware; pakety se nesmějí dělit jako sériový proud.");
-            device.ConnectionStatusChanged += ConnectionChanged; Status("BLE připojeno · ověřuji MeshCore protokol");
-        }
-        catch { if (epoch == generation) Disconnect(); throw; }
-        finally { connecting.Release(); }
+        await connection.Connect(new NativeBleConnection(address, dispatcher, connection, StopScan, bytes => Received?.Invoke(bytes)), initialize);
     }
-    // Some WinRT operations cannot actually be cancelled. Dispose late results
-    // after our deadline instead of adopting objects into a newer connection.
-    private static async Task<T> AwaitNative<T>(Task<T> operation, Action<T> discard)
+    public Task WriteAsync(byte[] frame, CancellationToken cancellation = default)
     {
-        try { return await operation.WaitAsync(TimeSpan.FromSeconds(20)); }
-        catch
-        {
-            _ = operation.ContinueWith(t => { if (t.Status == TaskStatus.RanToCompletion) discard(t.Result); }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            throw;
-        }
+        if (!Ready || connection.Driver is not NativeBleConnection native) throw new MeshException("BLE není připojeno.");
+        return native.Write(frame, cancellation);
     }
-    private void ConnectionChanged(BluetoothLEDevice sender, object args)
-    { dispatcher.BeginInvoke(() => { if (ReferenceEquals(sender, device) && sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected) Disconnect(); }); }
-    private void ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs e)
-    {
-        byte[] bytes = new byte[e.CharacteristicValue.Length]; using (var reader = DataReader.FromBuffer(e.CharacteristicValue)) reader.ReadBytes(bytes);
-        dispatcher.BeginInvoke(() => { if (ReferenceEquals(sender, tx)) Received?.Invoke(bytes); });
-    }
-    public async Task WriteAsync(byte[] frame, CancellationToken cancellation = default)
-    {
-        var characteristic = rx ?? throw new MeshException("BLE není připojeno."); Codec.BleFrame(frame, MaximumWriteLength);
-        using var writer = new DataWriter(); writer.WriteBytes(frame);
-        var result = await characteristic.WriteValueWithResultAsync(writer.DetachBuffer(), GattWriteOption.WriteWithResponse).AsTask(cancellation); Success(result.Status);
-    }
-    public void Disconnect()
-    {
-        generation++; if (tx != null) tx.ValueChanged -= ValueChanged; if (device != null) device.ConnectionStatusChanged -= ConnectionChanged;
-        tx = rx = null; service?.Dispose(); service = null; if (session != null) { if (session.CanMaintainConnection) session.MaintainConnection = false; session.Dispose(); } session = null; device?.Dispose(); device = null; Status("Odpojeno"); Disconnected?.Invoke();
-    }
-    public void Dispose() { StopScan(); Disconnect(); }
+    public void Disconnect(BleCloseReason reason = BleCloseReason.User) => connection.Disconnect(reason);
+    public void Dispose() { try { StopScan(); } finally { Disconnect(BleCloseReason.Shutdown); } }
 }

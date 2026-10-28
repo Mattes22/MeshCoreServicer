@@ -6,10 +6,10 @@ final class WorkspaceModelTests: XCTestCase {
     private let account = String(repeating:"11",count:32)
     @MainActor func testOptionsEditedBeforeFirstConnectionBecomeNewProfileDefaults() throws {
         let m = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false))
-        m.preferences.consoleSuggestions = false; m.monitorIntervalMinutes = 40
+        m.preferences.consoleSuggestions = false; m.monitorIntervalMinutes = 300
         try identity(m,byte:0x11)
-        XCTAssertFalse(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,40)
-        XCTAssertEqual(m.library.profile?.options.diagnosticMinutes,40)
+        XCTAssertFalse(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,300)
+        XCTAssertEqual(m.library.profile?.options.diagnosticMinutes,300)
     }
     @MainActor private func identity(_ m: AppModel,byte: UInt8) throws {
         var d = Data([5,0,0,0])+Data(repeating:byte,count:32)+Data(repeating:0,count:12)
@@ -29,17 +29,17 @@ final class WorkspaceModelTests: XCTestCase {
     }
     @MainActor func testProfilesRestoreOwnPreferencesAndClearConsoleAcrossIdentities() async throws {
         let (m,t,_) = try await fixture()
-        m.preferences.consoleSuggestions = false; m.monitorIntervalMinutes = 45; m.preferences.showMessageText = true
+        m.preferences.consoleSuggestions = false; m.monitorIntervalMinutes = 315; m.preferences.showMessageText = true
         m.command = "private draft"; m.history = ["get name"]; m.console = [ConsoleLine(target:"Test",targetID:"old",command:"get name",response:"PRIVATE")]
         m.log("Previous profile event"); m.knownSecrets.insert("OLD_SECRET")
         try identity(m,byte:0x22)
-        XCTAssertTrue(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,30)
+        XCTAssertTrue(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,240)
         XCTAssertTrue(m.preferences.showMessageText,"Privacy preference stays global")
         XCTAssertTrue(m.history.isEmpty); XCTAssertTrue(m.command.isEmpty); XCTAssertTrue(m.console.isEmpty)
         XCTAssertTrue(m.logs.isEmpty); XCTAssertTrue(m.knownSecrets.isEmpty)
         XCTAssertNil(m.selectedID); XCTAssertNil(m.adminID)
         try identity(m,byte:0x11)
-        XCTAssertFalse(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,45)
+        XCTAssertFalse(m.preferences.consoleSuggestions); XCTAssertEqual(m.monitorIntervalMinutes,315)
         XCTAssertTrue(t.frames.isEmpty)
     }
     @MainActor func testWrongIdentityForRequestedProfileIsRejectedWithoutRadio() async throws {
@@ -67,6 +67,34 @@ final class WorkspaceModelTests: XCTestCase {
         let broken = WorkspaceLibrary(defaults:defaults)
         try broken.activate(account:account,name:"Test",bluetoothID:nil,defaults:DevicePreferences())
         XCTAssertNotNil(broken.storageError); XCTAssertEqual(defaults.data(forKey:"workspaceLibrary"),corrupt)
+    }
+    @MainActor func testOlderActiveAndInactiveProfilesMigrateWithoutOtherPreferenceChanges() throws {
+        let suite = "Migration082." + UUID().uuidString, defaults = try XCTUnwrap(UserDefaults(suiteName:suite))
+        defer { defaults.removePersistentDomain(forName:suite) }
+        var old = WorkspaceDocument()
+        for (index,minutes) in [30,60,179,180,181,360,480,1440].enumerated() {
+            var p = CompanionProfile(id:String(repeating:String(format:"%02x",index+1),count:32),name:"Test \(index)")
+            p.alias = "Alias \(index)"; p.options.diagnosticMinutes = minutes
+            p.options.autoReconnect = false; p.options.history = false; p.options.changes = true
+            old.profiles.append(p)
+        }
+        defaults.set(try JSONEncoder().encode(old),forKey:"workspaceLibrary")
+        defaults.set(true,forKey:"monitoring"); defaults.set(true,forKey:"notifications")
+        let library = WorkspaceLibrary(defaults:defaults)
+        XCTAssertNil(library.storageError); XCTAssertNil(library.account)
+        for (i,p) in library.document.profiles.enumerated() {
+            XCTAssertEqual(p.alias,old.profiles[i].alias)
+            XCTAssertEqual(p.options.diagnosticMinutes,old.profiles[i].options.diagnosticMinutes < 180 ? 240 : old.profiles[i].options.diagnosticMinutes)
+            XCTAssertFalse(p.options.autoReconnect); XCTAssertFalse(p.options.history); XCTAssertTrue(p.options.changes)
+        }
+        try library.rename(library.document.profiles[0].id,alias:"Alias 0") // ordinary persistence writes normalized options
+        let written = try XCTUnwrap(defaults.data(forKey:"workspaceLibrary"))
+        let loaded = WorkspaceLibrary(defaults:defaults)
+        XCTAssertNil(loaded.storageError); XCTAssertEqual(loaded.document.profiles,library.document.profiles)
+        XCTAssertEqual(defaults.data(forKey:"workspaceLibrary"),written)
+        XCTAssertTrue(defaults.bool(forKey:"notifications"))
+        let model = AppModel(traffic:.testing(),ble:BluetoothTransport(startImmediately:false),library:loaded)
+        XCTAssertFalse(model.monitoring); XCTAssertNil(model.measurement); XCTAssertEqual(model.monitorIntervalMinutes,240)
     }
     @MainActor func testShortcutAndEvidenceAreIsolatedBetweenProfiles() throws {
         let l = WorkspaceLibrary(), session = UUID(), repeater = String(repeating:"ab",count:32)

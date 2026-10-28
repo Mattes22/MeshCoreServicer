@@ -36,7 +36,7 @@ Katalog je ověřen proti firmwaru `81dbae592ffad40b4212bc0b37e82b38da08f4bc` (v
 - **Systémová oznámení zpráv:** banner, volitelný zvuk, odznak v Docku, otevření konverzace kliknutím, skrytý obsah ve výchozím stavu a ztišení kanálů.
 - **Obnovení BLE:** po nečekaném výpadku a po probuzení, s prodlevami 1–30 s; ruční odpojení pokusy ukončí. Připojení neopakuje neověřené vysílání nebo přihlášení.
 - **Snímky konfigurace:** uložení načtených polí s časem čtení, JSON import/export, porovnání se skutečným stavem a selektivní obnova s potvrzením a zpětným ověřením. Bez hesel a privátních klíčů.
-- **Zdraví repeateru:** historie napětí, uptime a provozu; časově omezené diagnostické měření po LoRa: výchozí 3 vzorky po 30 minutách, bez známé trasy nejméně 60 minut; nejvýše 6 vzorků během 6 hodin. Měření je vypnuté a první požadavek čeká celý interval.
+- **Zdraví repeateru:** historie napětí, uptime a provozu; časově omezené diagnostické měření po LoRa: od zdrojové verze 0.8.2 výchozí 3 vzorky po 4 hodinách (první po 4 h, poslední po 12 h), interval 3–24 hodin; nejvýše 6 vzorků během 24 hodin. Měření je vypnuté a první požadavek čeká celý interval.
 - **Detail kanálových kopií:** posledních 64 skutečných rádiových příjmů každé zprávy s časem, hopy, RSSI a SNR dané kopie. Souhrnný čítač zůstává zachovaný i po omezení detailu.
 - **Kontrola po restartu:** samostatné ověření dostupnosti a hodin, detekce možného restartu z poklesu uptime a trvalý seznam změn čekajících na ověření.
 

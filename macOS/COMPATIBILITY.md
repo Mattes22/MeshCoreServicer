@@ -1,7 +1,32 @@
-# Kompatibilita a ověření verze 0.8.0
+# Ověření 0.9.0 · macOS
 
-Zdrojová verze 0.8.0 (sestavení 8): 151 automatických Swift testů prošlo;
-Xcode Release sestavení pro arm64 i x86_64 prošlo. Distribuční DMG 0.8.0 má
+26. 10. 2026: 158 Swift testů prošlo (83 jádro, 75 aplikační logika).
+Univerzální Xcode Release arm64/x86_64 prošel. Distribuce přidává Sparkle
+2.10.1, povinný podpis feedu a ověření archivu před rozbalením. Dva testy
+skutečného nástroje BinaryDelta ověřují rekonstrukci a odmítnutí nesprávného
+základu. Podepisování a notarizace se evidují ve validačním JSON vydání.
+Fyzické BLE/LoRa, první spuštění na čistém jiném Macu a uživatelský přechod
+mezi dvěma vydanými verzemi 0.9.x nebyly v tomto ověření provedené.
+
+Následující záznamy popisují předchozí verze.
+
+# Ověření zdrojové verze 0.8.2 pro macOS
+
+Ověřeno 25. 10. 2026: **158 Swift testů prošlo** (83 jádro/politika, 75
+aplikační logika). Univerzální Xcode Release pro arm64 a x86_64 prošel bez
+podpisu vydání. Testování proběhlo na macOS; žádné skutečné zařízení se nepoužilo.
+
+Verze 0.8.2, sestavení 10. Diagnostika používá výchozí plán 4 h × 3,
+interval 3–24 h a nejvýše 6 vzorků během 24 h. Testy používají řízený čas
+a falešný transport; nečekají skutečné hodiny. Měření zůstává ruční a jeho
+stav se neukládá. Migrace platí i pro neaktivní profily.
+Nový podepsaný archiv, notarizace ani instalační balíček 0.8.2 nevznikly.
+Fyzické BLE/LoRa, airtime a dlouhodobý běh s uspáním nebyly ověřené.
+
+## Dřívější ověření verze 0.8.1
+
+Zdrojová verze 0.8.1 (sestavení 9): 151 automatických Swift testů prošlo;
+Xcode Release sestavení pro arm64 i x86_64 prošlo. Distribuční DMG 0.8.1 má
 Developer ID podpis, Hardened Runtime, sandbox a notarizaci Apple pro aplikaci
 i obraz. Oba tickety jsou připojené; Gatekeeper a kontrola skutečně vložené
 aplikace pomocí syspolicy_check distribution prošly. Stažení a první spuštění

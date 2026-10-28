@@ -15,6 +15,39 @@ class ReleaseTests(unittest.TestCase):
         return {'schema': 1, 'phase': phase, 'version': '1.2.3', 'archive': 'MeshCoreServicer.xcarchive',
                 'app': release.APP_NAME, 'zip': 'MeshCoreServicer-notarization.zip'}
 
+    def test_sparkle_requires_portable_framework_runpath(self):
+        dependency = '\t@rpath/Sparkle.framework/Versions/B/Sparkle (compatibility version 1.0.0, current version 2.10.1)'
+        for path in ('@executable_path/../Frameworks', '@loader_path/../Frameworks'):
+            commands = 'Load command 44\n          cmd LC_RPATH\n      cmdsize 48\n         path ' + path + ' (offset 12)\n'
+            release.validate_sparkle_linkage(commands, dependency)
+        # Regression: the original 0.9.0 build only had /usr/lib/swift.
+        for commands in ('', 'cmd LC_RPATH\n cmdsize 32\n path /usr/lib/swift (offset 12)',
+                         'cmd LC_RPATH\n cmdsize 48\n path /developer/Frameworks (offset 12)'):
+            with self.assertRaisesRegex(ValueError, 'LC_RPATH'):
+                release.validate_sparkle_linkage(commands, dependency)
+        with self.assertRaises(ValueError):
+            release.validate_sparkle_linkage('cmd LC_RPATH\n cmdsize 48\n path @executable_path/../Frameworks (offset 12)', '')
+
+    def test_sparkle_linkage_checked_in_both_architectures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = Path(directory) / 'Test.app'
+            framework = app / 'Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle'
+            framework.parent.mkdir(parents=True); framework.write_bytes(b'fixture')
+            calls = []
+            def capture(command):
+                calls.append(command)
+                if command[0] == 'lipo':
+                    return 'arm64 x86_64'
+                if '-l' in command:
+                    return 'cmd LC_RPATH\n cmdsize 48\n path @executable_path/../Frameworks (offset 12)'
+                return '@rpath/Sparkle.framework/Versions/B/Sparkle (compatibility version 1.0.0)'
+            with patch.object(release, 'capture', side_effect=capture):
+                release.verify_runtime_linkage(app, app / 'Contents/MacOS/Test')
+            self.assertEqual({'arm64', 'x86_64'}, {c[2] for c in calls if c[0] == 'otool'})
+            framework.unlink()
+            with self.assertRaises(ValueError):
+                release.verify_runtime_linkage(app, app / 'Contents/MacOS/Test')
+
     def test_development_adhoc_and_installer_identities_are_not_app_distribution(self):
         text = '\n'.join('  1) ' + 'A' * 40 + ' "' + name + '"' for name in (
             'Apple Development: Test (TESTTEAM12)', 'Developer ID Installer: Test (TESTTEAM12)',
@@ -40,6 +73,23 @@ class ReleaseTests(unittest.TestCase):
                 release.validate_entitlements(extra)
         with self.assertRaises(ValueError):
             release.validate_entitlements({})
+
+    def test_usb_distribution_requires_serial_entitlement(self):
+        import plistlib
+        actual = plistlib.loads((release.ROOT / 'Config/MeshCoreServicer.entitlements').read_bytes())
+        release.validate_entitlements(actual)
+        self.assertIs(actual['com.apple.security.device.serial'], True)
+        missing = dict(actual)
+        del missing['com.apple.security.device.serial']
+        with self.assertRaises(ValueError):
+            release.validate_entitlements(missing)
+
+    def test_expanded_sparkle_entitlements_are_limited_to_actual_bundle(self):
+        expected = dict(release.REQUIRED_ENTITLEMENTS)
+        expected['com.apple.security.temporary-exception.mach-lookup.global-name'] = ['org.example.test-spks', 'org.example.test-spki']
+        release.validate_entitlements(expected, 'org.example.test')
+        with self.assertRaises(ValueError):
+            release.validate_entitlements(expected, 'org.example.other')
 
     def test_modified_upload_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

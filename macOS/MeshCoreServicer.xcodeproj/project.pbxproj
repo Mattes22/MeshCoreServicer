@@ -1,400 +1,83 @@
 // !$*UTF8*$!
-{
-	archiveVersion = 1;
-	classes = {
-	};
-	objectVersion = 60;
-	objects = {
-
-/* Begin PBXBuildFile section */
-		1EB91645CAA3EB3BD22A0A21 /* Sources/MeshCoreServicer/ChatArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E30765DC2985DFC46095FD /* Sources/MeshCoreServicer/ChatArchive.swift */; };
-		29D2EFA20298F0E275C4D9B0 /* Sources/MeshCoreServicer/OperationsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86A4B711104B878C091A99FF /* Sources/MeshCoreServicer/OperationsModel.swift */; };
-		2FDE55A1A25D35A4BB4526A1 /* Sources/MeshCoreServicer/WorkspaceLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4726843D78A4A0BF6A91E59F /* Sources/MeshCoreServicer/WorkspaceLibrary.swift */; };
-		31F2E0926AC735D037DD4F2A /* Sources/MeshCoreServicer/AppModel+Messages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F9CE921701F961183BE465 /* Sources/MeshCoreServicer/AppModel+Messages.swift */; };
-		3B1BD0D3E3B196288B17828C /* Sources/MeshCoreServicer/AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F0BAA916FBE44A40DD43C5 /* Sources/MeshCoreServicer/AppModel.swift */; };
-		40CAAAF8E03728D070AE4DAB /* Sources/MeshCoreServicer/MeshCoreServicerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8774CAC75A03359A2DA5E181 /* Sources/MeshCoreServicer/MeshCoreServicerApp.swift */; };
-		5ABB2B38E3E806C58064CD6C /* Sources/MeshCoreServicer/UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3A778500EE550B70B0D358 /* Sources/MeshCoreServicer/UIComponents.swift */; };
-		5F4C0158DC37F7425F47E939 /* MeshCoreKit in Frameworks */ = {isa = PBXBuildFile; productRef = DE58E2B17C19600779694943 /* MeshCoreKit */; };
-		74C2431FE30C4A47C8443B80 /* Config/AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = F8995BA5891B07E328C60D6B /* Config/AppIcon.icns */; };
-		77F90B84ACC78B6245B11AEA /* Sources/MeshCoreServicer/WorkspaceToolsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 473E05471D694564A60D8D5B /* Sources/MeshCoreServicer/WorkspaceToolsViews.swift */; };
-		7986499F0690CF4AE8E86891 /* Sources/MeshCoreServicer/OperationsWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = F460E89C6405FEE7191AE269 /* Sources/MeshCoreServicer/OperationsWorkspace.swift */; };
-		7F3FA5D4D322E01B2BE1EE20 /* Sources/MeshCoreServicer/MessagesWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF2D915A306E9F16174DE39 /* Sources/MeshCoreServicer/MessagesWorkspace.swift */; };
-		87CA6CFC0516CD74A99D61B0 /* Sources/MeshCoreServicer/RepeaterToolsWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9D5D2E6EE2FB041DA80899 /* Sources/MeshCoreServicer/RepeaterToolsWorkspace.swift */; };
-		8A1A77776F2409D4AD58C915 /* Sources/MeshCoreServicer/RepeaterWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A18363DF5E35D8991B8C03 /* Sources/MeshCoreServicer/RepeaterWorkspace.swift */; };
-		90859E7AFD5CBFB289AC1484 /* Sources/MeshCoreServicer/AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C8B46063EB40D03C710E79 /* Sources/MeshCoreServicer/AppSettingsView.swift */; };
-		986BD0AEC94E57610D60CDA6 /* Sources/MeshCoreServicer/AppModel+Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0031C1EE0A04690ECCEA674F /* Sources/MeshCoreServicer/AppModel+Workspace.swift */; };
-		9F3E364798E7C698859EC785 /* Sources/MeshCoreServicer/ConsoleWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 644409F416D60C313E4850F8 /* Sources/MeshCoreServicer/ConsoleWorkspace.swift */; };
-		B58E3CED184C9CA2E2D4274F /* Sources/MeshCoreServicer/ConnectionWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39639A42F3BABCAE505F53E8 /* Sources/MeshCoreServicer/ConnectionWorkspace.swift */; };
-		BFC373E82F78057ED833666A /* Sources/MeshCoreServicer/ContactsWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71C4AEBDD4989B214607B90C /* Sources/MeshCoreServicer/ContactsWorkspace.swift */; };
-		CE54AC89679DB49F590590C0 /* Sources/MeshCoreServicer/AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = A890C8F4926BDA67E7D60BBC /* Sources/MeshCoreServicer/AppPreferences.swift */; };
-		D18219787166B0AADA9487FD /* Sources/MeshCoreServicer/MessagesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B1A13CFA4AA7D15BAD6E58 /* Sources/MeshCoreServicer/MessagesModel.swift */; };
-		D8F4EE3D40C3085B847E4553 /* Sources/MeshCoreServicer/KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47B919E43BBB92E5283D1EA /* Sources/MeshCoreServicer/KeychainStore.swift */; };
-		E01F7E015FDEAACA542470C7 /* Sources/MeshCoreServicer/DiagnosticsWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B4D2C271EBCF9D464A9A94 /* Sources/MeshCoreServicer/DiagnosticsWorkspace.swift */; };
-		E11030640FCC0E9D6783BF78 /* Sources/MeshCoreServicer/ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D492BDFDF1D2D6F914641502 /* Sources/MeshCoreServicer/ContentView.swift */; };
-		EF8322C9D0C8510057152815 /* Sources/MeshCoreServicer/AppModel+Reliability.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21FE179FB19250521445B50 /* Sources/MeshCoreServicer/AppModel+Reliability.swift */; };
-		EFEBA552DF62194775335A42 /* Sources/MeshCoreServicer/AppModel+RepeaterTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9723763ABB7AC41975706DDD /* Sources/MeshCoreServicer/AppModel+RepeaterTools.swift */; };
-		F849DC38FE2952784177576F /* Sources/MeshCoreServicer/NotificationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 095665F2DE32A634D15ADC8A /* Sources/MeshCoreServicer/NotificationCoordinator.swift */; };
-/* End PBXBuildFile section */
-
-/* Begin PBXFileReference section */
-		0031C1EE0A04690ECCEA674F /* Sources/MeshCoreServicer/AppModel+Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+Workspace.swift"; sourceTree = SOURCE_ROOT; };
-		06E30765DC2985DFC46095FD /* Sources/MeshCoreServicer/ChatArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/ChatArchive.swift; sourceTree = SOURCE_ROOT; };
-		095665F2DE32A634D15ADC8A /* Sources/MeshCoreServicer/NotificationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/NotificationCoordinator.swift; sourceTree = SOURCE_ROOT; };
-		38A007151ABE87CC01A5B6E9 /* MeshCore Servicer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = "MeshCore Servicer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		39639A42F3BABCAE505F53E8 /* Sources/MeshCoreServicer/ConnectionWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/ConnectionWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		40F0BAA916FBE44A40DD43C5 /* Sources/MeshCoreServicer/AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/AppModel.swift; sourceTree = SOURCE_ROOT; };
-		42C8B46063EB40D03C710E79 /* Sources/MeshCoreServicer/AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/AppSettingsView.swift; sourceTree = SOURCE_ROOT; };
-		44B1A13CFA4AA7D15BAD6E58 /* Sources/MeshCoreServicer/MessagesModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/MessagesModel.swift; sourceTree = SOURCE_ROOT; };
-		4726843D78A4A0BF6A91E59F /* Sources/MeshCoreServicer/WorkspaceLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/WorkspaceLibrary.swift; sourceTree = SOURCE_ROOT; };
-		473E05471D694564A60D8D5B /* Sources/MeshCoreServicer/WorkspaceToolsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/WorkspaceToolsViews.swift; sourceTree = SOURCE_ROOT; };
-		4F9D5D2E6EE2FB041DA80899 /* Sources/MeshCoreServicer/RepeaterToolsWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/RepeaterToolsWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		644409F416D60C313E4850F8 /* Sources/MeshCoreServicer/ConsoleWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/ConsoleWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		71C4AEBDD4989B214607B90C /* Sources/MeshCoreServicer/ContactsWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/ContactsWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		77A18363DF5E35D8991B8C03 /* Sources/MeshCoreServicer/RepeaterWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/RepeaterWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		7A3A778500EE550B70B0D358 /* Sources/MeshCoreServicer/UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/UIComponents.swift; sourceTree = SOURCE_ROOT; };
-		81F9CE921701F961183BE465 /* Sources/MeshCoreServicer/AppModel+Messages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+Messages.swift"; sourceTree = SOURCE_ROOT; };
-		86A4B711104B878C091A99FF /* Sources/MeshCoreServicer/OperationsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/OperationsModel.swift; sourceTree = SOURCE_ROOT; };
-		8774CAC75A03359A2DA5E181 /* Sources/MeshCoreServicer/MeshCoreServicerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/MeshCoreServicerApp.swift; sourceTree = SOURCE_ROOT; };
-		9723763ABB7AC41975706DDD /* Sources/MeshCoreServicer/AppModel+RepeaterTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+RepeaterTools.swift"; sourceTree = SOURCE_ROOT; };
-		A47B919E43BBB92E5283D1EA /* Sources/MeshCoreServicer/KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/KeychainStore.swift; sourceTree = SOURCE_ROOT; };
-		A890C8F4926BDA67E7D60BBC /* Sources/MeshCoreServicer/AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/AppPreferences.swift; sourceTree = SOURCE_ROOT; };
-		ABF2D915A306E9F16174DE39 /* Sources/MeshCoreServicer/MessagesWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/MessagesWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		B2B4D2C271EBCF9D464A9A94 /* Sources/MeshCoreServicer/DiagnosticsWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/DiagnosticsWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		D492BDFDF1D2D6F914641502 /* Sources/MeshCoreServicer/ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/ContentView.swift; sourceTree = SOURCE_ROOT; };
-		F21FE179FB19250521445B50 /* Sources/MeshCoreServicer/AppModel+Reliability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+Reliability.swift"; sourceTree = SOURCE_ROOT; };
-		F460E89C6405FEE7191AE269 /* Sources/MeshCoreServicer/OperationsWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeshCoreServicer/OperationsWorkspace.swift; sourceTree = SOURCE_ROOT; };
-		F8995BA5891B07E328C60D6B /* Config/AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Config/AppIcon.icns; sourceTree = SOURCE_ROOT; };
-/* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		7561BFB015D8F536760CB671 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5F4C0158DC37F7425F47E939 /* MeshCoreKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		64292B1C2B2E13EAD8788FC8 = {
-			isa = PBXGroup;
-			children = (
-				81F9CE921701F961183BE465 /* Sources/MeshCoreServicer/AppModel+Messages.swift */,
-				F21FE179FB19250521445B50 /* Sources/MeshCoreServicer/AppModel+Reliability.swift */,
-				9723763ABB7AC41975706DDD /* Sources/MeshCoreServicer/AppModel+RepeaterTools.swift */,
-				0031C1EE0A04690ECCEA674F /* Sources/MeshCoreServicer/AppModel+Workspace.swift */,
-				40F0BAA916FBE44A40DD43C5 /* Sources/MeshCoreServicer/AppModel.swift */,
-				A890C8F4926BDA67E7D60BBC /* Sources/MeshCoreServicer/AppPreferences.swift */,
-				42C8B46063EB40D03C710E79 /* Sources/MeshCoreServicer/AppSettingsView.swift */,
-				06E30765DC2985DFC46095FD /* Sources/MeshCoreServicer/ChatArchive.swift */,
-				39639A42F3BABCAE505F53E8 /* Sources/MeshCoreServicer/ConnectionWorkspace.swift */,
-				644409F416D60C313E4850F8 /* Sources/MeshCoreServicer/ConsoleWorkspace.swift */,
-				71C4AEBDD4989B214607B90C /* Sources/MeshCoreServicer/ContactsWorkspace.swift */,
-				D492BDFDF1D2D6F914641502 /* Sources/MeshCoreServicer/ContentView.swift */,
-				B2B4D2C271EBCF9D464A9A94 /* Sources/MeshCoreServicer/DiagnosticsWorkspace.swift */,
-				A47B919E43BBB92E5283D1EA /* Sources/MeshCoreServicer/KeychainStore.swift */,
-				8774CAC75A03359A2DA5E181 /* Sources/MeshCoreServicer/MeshCoreServicerApp.swift */,
-				44B1A13CFA4AA7D15BAD6E58 /* Sources/MeshCoreServicer/MessagesModel.swift */,
-				ABF2D915A306E9F16174DE39 /* Sources/MeshCoreServicer/MessagesWorkspace.swift */,
-				095665F2DE32A634D15ADC8A /* Sources/MeshCoreServicer/NotificationCoordinator.swift */,
-				86A4B711104B878C091A99FF /* Sources/MeshCoreServicer/OperationsModel.swift */,
-				F460E89C6405FEE7191AE269 /* Sources/MeshCoreServicer/OperationsWorkspace.swift */,
-				4F9D5D2E6EE2FB041DA80899 /* Sources/MeshCoreServicer/RepeaterToolsWorkspace.swift */,
-				77A18363DF5E35D8991B8C03 /* Sources/MeshCoreServicer/RepeaterWorkspace.swift */,
-				7A3A778500EE550B70B0D358 /* Sources/MeshCoreServicer/UIComponents.swift */,
-				4726843D78A4A0BF6A91E59F /* Sources/MeshCoreServicer/WorkspaceLibrary.swift */,
-				473E05471D694564A60D8D5B /* Sources/MeshCoreServicer/WorkspaceToolsViews.swift */,
-				F8995BA5891B07E328C60D6B /* Config/AppIcon.icns */,
-				FBDC4F23F93125BBEEAE800C /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		FBDC4F23F93125BBEEAE800C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				38A007151ABE87CC01A5B6E9 /* MeshCore Servicer.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-/* End PBXGroup section */
-
-/* Begin PBXNativeTarget section */
-		0E8A3AD980EC179856012B7E /* MeshCoreServicer */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F37922C48DA5978D02C9E50E /* Build configuration list for PBXNativeTarget "MeshCoreServicer" */;
-			buildPhases = (
-				BCE16DD0260827ECF338C787 /* Sources */,
-				7561BFB015D8F536760CB671 /* Frameworks */,
-				0189424A5A60FED329FA868E /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = MeshCoreServicer;
-			packageProductDependencies = (
-				DE58E2B17C19600779694943 /* MeshCoreKit */,
-			);
-			productName = "MeshCore Servicer";
-			productReference = 38A007151ABE87CC01A5B6E9 /* MeshCore Servicer.app */;
-			productType = "com.apple.product-type.application";
-		};
-/* End PBXNativeTarget section */
-
-/* Begin PBXProject section */
-		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2710;
-			};
-			buildConfigurationList = 862894B703A6DEDF96A9DD6C /* Build configuration list for PBXProject "MeshCoreServicer" */;
-			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = cs;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				cs,
-				en,
-				Base,
-			);
-			mainGroup = 64292B1C2B2E13EAD8788FC8;
-			packageReferences = (
-				582681C2EAE02B3F3D399C0C /* XCLocalSwiftPackageReference "." */,
-			);
-			productRefGroup = FBDC4F23F93125BBEEAE800C /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				0E8A3AD980EC179856012B7E /* MeshCoreServicer */,
-			);
-		};
-/* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		0189424A5A60FED329FA868E /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				74C2431FE30C4A47C8443B80 /* Config/AppIcon.icns in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
-/* Begin PBXSourcesBuildPhase section */
-		BCE16DD0260827ECF338C787 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				31F2E0926AC735D037DD4F2A /* Sources/MeshCoreServicer/AppModel+Messages.swift in Sources */,
-				EF8322C9D0C8510057152815 /* Sources/MeshCoreServicer/AppModel+Reliability.swift in Sources */,
-				EFEBA552DF62194775335A42 /* Sources/MeshCoreServicer/AppModel+RepeaterTools.swift in Sources */,
-				986BD0AEC94E57610D60CDA6 /* Sources/MeshCoreServicer/AppModel+Workspace.swift in Sources */,
-				3B1BD0D3E3B196288B17828C /* Sources/MeshCoreServicer/AppModel.swift in Sources */,
-				CE54AC89679DB49F590590C0 /* Sources/MeshCoreServicer/AppPreferences.swift in Sources */,
-				90859E7AFD5CBFB289AC1484 /* Sources/MeshCoreServicer/AppSettingsView.swift in Sources */,
-				1EB91645CAA3EB3BD22A0A21 /* Sources/MeshCoreServicer/ChatArchive.swift in Sources */,
-				B58E3CED184C9CA2E2D4274F /* Sources/MeshCoreServicer/ConnectionWorkspace.swift in Sources */,
-				9F3E364798E7C698859EC785 /* Sources/MeshCoreServicer/ConsoleWorkspace.swift in Sources */,
-				BFC373E82F78057ED833666A /* Sources/MeshCoreServicer/ContactsWorkspace.swift in Sources */,
-				E11030640FCC0E9D6783BF78 /* Sources/MeshCoreServicer/ContentView.swift in Sources */,
-				E01F7E015FDEAACA542470C7 /* Sources/MeshCoreServicer/DiagnosticsWorkspace.swift in Sources */,
-				D8F4EE3D40C3085B847E4553 /* Sources/MeshCoreServicer/KeychainStore.swift in Sources */,
-				40CAAAF8E03728D070AE4DAB /* Sources/MeshCoreServicer/MeshCoreServicerApp.swift in Sources */,
-				D18219787166B0AADA9487FD /* Sources/MeshCoreServicer/MessagesModel.swift in Sources */,
-				7F3FA5D4D322E01B2BE1EE20 /* Sources/MeshCoreServicer/MessagesWorkspace.swift in Sources */,
-				F849DC38FE2952784177576F /* Sources/MeshCoreServicer/NotificationCoordinator.swift in Sources */,
-				29D2EFA20298F0E275C4D9B0 /* Sources/MeshCoreServicer/OperationsModel.swift in Sources */,
-				7986499F0690CF4AE8E86891 /* Sources/MeshCoreServicer/OperationsWorkspace.swift in Sources */,
-				87CA6CFC0516CD74A99D61B0 /* Sources/MeshCoreServicer/RepeaterToolsWorkspace.swift in Sources */,
-				8A1A77776F2409D4AD58C915 /* Sources/MeshCoreServicer/RepeaterWorkspace.swift in Sources */,
-				5ABB2B38E3E806C58064CD6C /* Sources/MeshCoreServicer/UIComponents.swift in Sources */,
-				2FDE55A1A25D35A4BB4526A1 /* Sources/MeshCoreServicer/WorkspaceLibrary.swift in Sources */,
-				77F90B84ACC78B6245B11AEA /* Sources/MeshCoreServicer/WorkspaceToolsViews.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase section */
-
-/* Begin XCBuildConfiguration section */
-		5A8C91857F674E16E2724F47 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CODE_SIGN_ENTITLEMENTS = Config/MeshCoreServicer.entitlements;
-				CODE_SIGN_IDENTITY = "-";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEPLOYMENT_POSTPROCESSING = YES;
-
-				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Config/Info.plist;
-				ONLY_ACTIVE_ARCH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -file-prefix-map $(SRCROOT)=/MeshCoreServicer -debug-prefix-map $(SRCROOT)=/MeshCoreServicer";
-				PRODUCT_BUNDLE_IDENTIFIER = org.meshcoreservicer.app;
-				PRODUCT_NAME = "MeshCore Servicer";
-
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_SERIALIZE_DEBUGGING_OPTIONS = NO;
-			};
-			name = Release;
-		};
-		89E1FD6268CC0F221A2BE178 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
-		E6DE6C99132752C914FEF632 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEPLOYMENT_POSTPROCESSING = YES;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.0;
-			};
-			name = Release;
-		};
-		E9B2E96ABC5F6856F2BE79CF /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CODE_SIGN_ENTITLEMENTS = Config/MeshCoreServicer.entitlements;
-				CODE_SIGN_IDENTITY = "-";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-
-				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Config/Info.plist;
-				ONLY_ACTIVE_ARCH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -file-prefix-map $(SRCROOT)=/MeshCoreServicer -debug-prefix-map $(SRCROOT)=/MeshCoreServicer";
-				PRODUCT_BUNDLE_IDENTIFIER = org.meshcoreservicer.app;
-				PRODUCT_NAME = "MeshCore Servicer";
-
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_SERIALIZE_DEBUGGING_OPTIONS = NO;
-			};
-			name = Debug;
-		};
-/* End XCBuildConfiguration section */
-
-/* Begin XCConfigurationList section */
-		862894B703A6DEDF96A9DD6C /* Build configuration list for PBXProject "MeshCoreServicer" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				89E1FD6268CC0F221A2BE178 /* Debug */,
-				E6DE6C99132752C914FEF632 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		F37922C48DA5978D02C9E50E /* Build configuration list for PBXNativeTarget "MeshCoreServicer" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				E9B2E96ABC5F6856F2BE79CF /* Debug */,
-				5A8C91857F674E16E2724F47 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-/* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		582681C2EAE02B3F3D399C0C /* XCLocalSwiftPackageReference "." */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = .;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		DE58E2B17C19600779694943 /* MeshCoreKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 582681C2EAE02B3F3D399C0C /* XCLocalSwiftPackageReference "." */;
-			productName = MeshCoreKit;
-		};
-/* End XCSwiftPackageProductDependency section */
-	};
-	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
-}
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+81F9CE921701F961183BE465 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+Messages.swift"; sourceTree = SOURCE_ROOT; };
+31F2E0926AC735D037DD4F2A = { isa = PBXBuildFile; fileRef = 81F9CE921701F961183BE465; };
+F21FE179FB19250521445B50 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+Reliability.swift"; sourceTree = SOURCE_ROOT; };
+EF8322C9D0C8510057152815 = { isa = PBXBuildFile; fileRef = F21FE179FB19250521445B50; };
+9723763ABB7AC41975706DDD = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+RepeaterTools.swift"; sourceTree = SOURCE_ROOT; };
+EFEBA552DF62194775335A42 = { isa = PBXBuildFile; fileRef = 9723763ABB7AC41975706DDD; };
+0031C1EE0A04690ECCEA674F = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel+Workspace.swift"; sourceTree = SOURCE_ROOT; };
+986BD0AEC94E57610D60CDA6 = { isa = PBXBuildFile; fileRef = 0031C1EE0A04690ECCEA674F; };
+40F0BAA916FBE44A40DD43C5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppModel.swift"; sourceTree = SOURCE_ROOT; };
+3B1BD0D3E3B196288B17828C = { isa = PBXBuildFile; fileRef = 40F0BAA916FBE44A40DD43C5; };
+A890C8F4926BDA67E7D60BBC = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppPreferences.swift"; sourceTree = SOURCE_ROOT; };
+CE54AC89679DB49F590590C0 = { isa = PBXBuildFile; fileRef = A890C8F4926BDA67E7D60BBC; };
+42C8B46063EB40D03C710E79 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppSettingsView.swift"; sourceTree = SOURCE_ROOT; };
+90859E7AFD5CBFB289AC1484 = { isa = PBXBuildFile; fileRef = 42C8B46063EB40D03C710E79; };
+B73E58EEC8863A48300584A0 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/AppUpdates.swift"; sourceTree = SOURCE_ROOT; };
+6650D3A36000238449391365 = { isa = PBXBuildFile; fileRef = B73E58EEC8863A48300584A0; };
+06E30765DC2985DFC46095FD = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/ChatArchive.swift"; sourceTree = SOURCE_ROOT; };
+1EB91645CAA3EB3BD22A0A21 = { isa = PBXBuildFile; fileRef = 06E30765DC2985DFC46095FD; };
+39639A42F3BABCAE505F53E8 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/ConnectionWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+B58E3CED184C9CA2E2D4274F = { isa = PBXBuildFile; fileRef = 39639A42F3BABCAE505F53E8; };
+644409F416D60C313E4850F8 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/ConsoleWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+9F3E364798E7C698859EC785 = { isa = PBXBuildFile; fileRef = 644409F416D60C313E4850F8; };
+71C4AEBDD4989B214607B90C = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/ContactsWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+BFC373E82F78057ED833666A = { isa = PBXBuildFile; fileRef = 71C4AEBDD4989B214607B90C; };
+D492BDFDF1D2D6F914641502 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/ContentView.swift"; sourceTree = SOURCE_ROOT; };
+E11030640FCC0E9D6783BF78 = { isa = PBXBuildFile; fileRef = D492BDFDF1D2D6F914641502; };
+B2B4D2C271EBCF9D464A9A94 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/DiagnosticsWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+E01F7E015FDEAACA542470C7 = { isa = PBXBuildFile; fileRef = B2B4D2C271EBCF9D464A9A94; };
+A47B919E43BBB92E5283D1EA = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/KeychainStore.swift"; sourceTree = SOURCE_ROOT; };
+D8F4EE3D40C3085B847E4553 = { isa = PBXBuildFile; fileRef = A47B919E43BBB92E5283D1EA; };
+8774CAC75A03359A2DA5E181 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/MeshCoreServicerApp.swift"; sourceTree = SOURCE_ROOT; };
+40CAAAF8E03728D070AE4DAB = { isa = PBXBuildFile; fileRef = 8774CAC75A03359A2DA5E181; };
+44B1A13CFA4AA7D15BAD6E58 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/MessagesModel.swift"; sourceTree = SOURCE_ROOT; };
+D18219787166B0AADA9487FD = { isa = PBXBuildFile; fileRef = 44B1A13CFA4AA7D15BAD6E58; };
+ABF2D915A306E9F16174DE39 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/MessagesWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+7F3FA5D4D322E01B2BE1EE20 = { isa = PBXBuildFile; fileRef = ABF2D915A306E9F16174DE39; };
+095665F2DE32A634D15ADC8A = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/NotificationCoordinator.swift"; sourceTree = SOURCE_ROOT; };
+F849DC38FE2952784177576F = { isa = PBXBuildFile; fileRef = 095665F2DE32A634D15ADC8A; };
+86A4B711104B878C091A99FF = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/OperationsModel.swift"; sourceTree = SOURCE_ROOT; };
+29D2EFA20298F0E275C4D9B0 = { isa = PBXBuildFile; fileRef = 86A4B711104B878C091A99FF; };
+F460E89C6405FEE7191AE269 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/OperationsWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+7986499F0690CF4AE8E86891 = { isa = PBXBuildFile; fileRef = F460E89C6405FEE7191AE269; };
+4F9D5D2E6EE2FB041DA80899 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/RepeaterToolsWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+87CA6CFC0516CD74A99D61B0 = { isa = PBXBuildFile; fileRef = 4F9D5D2E6EE2FB041DA80899; };
+77A18363DF5E35D8991B8C03 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/RepeaterWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+8A1A77776F2409D4AD58C915 = { isa = PBXBuildFile; fileRef = 77A18363DF5E35D8991B8C03; };
+7A3A778500EE550B70B0D358 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/UIComponents.swift"; sourceTree = SOURCE_ROOT; };
+5ABB2B38E3E806C58064CD6C = { isa = PBXBuildFile; fileRef = 7A3A778500EE550B70B0D358; };
+256B047CBDAB0264E3F3D7BE = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/USBRepeaterModel.swift"; sourceTree = SOURCE_ROOT; };
+3C505EB16FF349506E8A9E4A = { isa = PBXBuildFile; fileRef = 256B047CBDAB0264E3F3D7BE; };
+D1961AED8611909AB9E70673 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/USBWorkspace.swift"; sourceTree = SOURCE_ROOT; };
+E36F440F65FBFC72E5259AB3 = { isa = PBXBuildFile; fileRef = D1961AED8611909AB9E70673; };
+4726843D78A4A0BF6A91E59F = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/WorkspaceLibrary.swift"; sourceTree = SOURCE_ROOT; };
+2FDE55A1A25D35A4BB4526A1 = { isa = PBXBuildFile; fileRef = 4726843D78A4A0BF6A91E59F; };
+473E05471D694564A60D8D5B = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/MeshCoreServicer/WorkspaceToolsViews.swift"; sourceTree = SOURCE_ROOT; };
+77F90B84ACC78B6245B11AEA = { isa = PBXBuildFile; fileRef = 473E05471D694564A60D8D5B; };
+38A007151ABE87CC01A5B6E9 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = "MeshCore Servicer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+582681C2EAE02B3F3D399C0C = { isa = XCLocalSwiftPackageReference; relativePath = .; };
+DE58E2B17C19600779694943 = { isa = XCSwiftPackageProductDependency; package = 582681C2EAE02B3F3D399C0C; productName = MeshCoreKit; };
+C840D118DAEAC8FCE5A8BBF6 = { isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/sparkle-project/Sparkle"; requirement = { kind = exactVersion; version = 2.10.1; }; };
+25EB63F9B7B31BAF2B7D60EF = { isa = XCSwiftPackageProductDependency; package = C840D118DAEAC8FCE5A8BBF6; productName = Sparkle; };
+3D8B9C2972369B4447B0B495 = { isa = PBXBuildFile; productRef = 25EB63F9B7B31BAF2B7D60EF; };
+5F4C0158DC37F7425F47E939 = { isa = PBXBuildFile; productRef = DE58E2B17C19600779694943; };
+BCE16DD0260827ECF338C787 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (31F2E0926AC735D037DD4F2A, EF8322C9D0C8510057152815, EFEBA552DF62194775335A42, 986BD0AEC94E57610D60CDA6, 3B1BD0D3E3B196288B17828C, CE54AC89679DB49F590590C0, 90859E7AFD5CBFB289AC1484, 6650D3A36000238449391365, 1EB91645CAA3EB3BD22A0A21, B58E3CED184C9CA2E2D4274F, 9F3E364798E7C698859EC785, BFC373E82F78057ED833666A, E11030640FCC0E9D6783BF78, E01F7E015FDEAACA542470C7, D8F4EE3D40C3085B847E4553, 40CAAAF8E03728D070AE4DAB, D18219787166B0AADA9487FD, 7F3FA5D4D322E01B2BE1EE20, F849DC38FE2952784177576F, 29D2EFA20298F0E275C4D9B0, 7986499F0690CF4AE8E86891, 87CA6CFC0516CD74A99D61B0, 8A1A77776F2409D4AD58C915, 5ABB2B38E3E806C58064CD6C, 3C505EB16FF349506E8A9E4A, E36F440F65FBFC72E5259AB3, 2FDE55A1A25D35A4BB4526A1, 77F90B84ACC78B6245B11AEA,); runOnlyForDeploymentPostprocessing = 0; };
+7561BFB015D8F536760CB671 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (5F4C0158DC37F7425F47E939, 3D8B9C2972369B4447B0B495,); runOnlyForDeploymentPostprocessing = 0; };
+F8995BA5891B07E328C60D6B = { isa = PBXFileReference; lastKnownFileType = image.icns; path = Config/AppIcon.icns; sourceTree = SOURCE_ROOT; };
+74C2431FE30C4A47C8443B80 = { isa = PBXBuildFile; fileRef = F8995BA5891B07E328C60D6B; };
+23457129B871D690A3B4D86A = { isa = PBXFileReference; lastKnownFileType = text; path = Config/ThirdPartyNotices.txt; sourceTree = SOURCE_ROOT; };
+77EA2F5C945E91FF03D20C23 = { isa = PBXBuildFile; fileRef = 23457129B871D690A3B4D86A; };
+0189424A5A60FED329FA868E = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (74C2431FE30C4A47C8443B80, 77EA2F5C945E91FF03D20C23,); runOnlyForDeploymentPostprocessing = 0; };
+FBDC4F23F93125BBEEAE800C = { isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9,); name = Products; sourceTree = "<group>"; };
+64292B1C2B2E13EAD8788FC8 = { isa = PBXGroup; children = (81F9CE921701F961183BE465, F21FE179FB19250521445B50, 9723763ABB7AC41975706DDD, 0031C1EE0A04690ECCEA674F, 40F0BAA916FBE44A40DD43C5, A890C8F4926BDA67E7D60BBC, 42C8B46063EB40D03C710E79, B73E58EEC8863A48300584A0, 06E30765DC2985DFC46095FD, 39639A42F3BABCAE505F53E8, 644409F416D60C313E4850F8, 71C4AEBDD4989B214607B90C, D492BDFDF1D2D6F914641502, B2B4D2C271EBCF9D464A9A94, A47B919E43BBB92E5283D1EA, 8774CAC75A03359A2DA5E181, 44B1A13CFA4AA7D15BAD6E58, ABF2D915A306E9F16174DE39, 095665F2DE32A634D15ADC8A, 86A4B711104B878C091A99FF, F460E89C6405FEE7191AE269, 4F9D5D2E6EE2FB041DA80899, 77A18363DF5E35D8991B8C03, 7A3A778500EE550B70B0D358, 256B047CBDAB0264E3F3D7BE, D1961AED8611909AB9E70673, 4726843D78A4A0BF6A91E59F, 473E05471D694564A60D8D5B, F8995BA5891B07E328C60D6B, 23457129B871D690A3B4D86A, FBDC4F23F93125BBEEAE800C,); sourceTree = "<group>"; };
+89E1FD6268CC0F221A2BE178 = { isa = XCBuildConfiguration; buildSettings = { MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; CLANG_ENABLE_MODULES = YES; ONLY_ACTIVE_ARCH = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; DEBUG_INFORMATION_FORMAT = dwarf; }; name = Debug; };
+E6DE6C99132752C914FEF632 = { isa = XCBuildConfiguration; buildSettings = { MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; CLANG_ENABLE_MODULES = YES; ONLY_ACTIVE_ARCH = YES; SWIFT_OPTIMIZATION_LEVEL = "-O"; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; DEPLOYMENT_POSTPROCESSING = YES; STRIP_INSTALLED_PRODUCT = YES; STRIP_STYLE = debugging; }; name = Release; };
+862894B703A6DEDF96A9DD6C = { isa = XCConfigurationList; buildConfigurations = (89E1FD6268CC0F221A2BE178, E6DE6C99132752C914FEF632,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+E9B2E96ABC5F6856F2BE79CF = { isa = XCBuildConfiguration; buildSettings = { PRODUCT_NAME = "MeshCore Servicer"; PRODUCT_BUNDLE_IDENTIFIER = org.meshcoreservicer.app; INFOPLIST_FILE = Config/Info.plist; CODE_SIGN_ENTITLEMENTS = Config/MeshCoreServicer.entitlements; CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = "-"; ENABLE_HARDENED_RUNTIME = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); GENERATE_INFOPLIST_FILE = NO; SWIFT_SERIALIZE_DEBUGGING_OPTIONS = NO; OTHER_SWIFT_FLAGS = ("$(inherited)", "-file-prefix-map", "$(SRCROOT)=/MeshCoreServicer", "-debug-prefix-map", "$(SRCROOT)=/MeshCoreServicer"); ONLY_ACTIVE_ARCH = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; DEBUG_INFORMATION_FORMAT = dwarf; }; name = Debug; };
+5A8C91857F674E16E2724F47 = { isa = XCBuildConfiguration; buildSettings = { PRODUCT_NAME = "MeshCore Servicer"; PRODUCT_BUNDLE_IDENTIFIER = org.meshcoreservicer.app; INFOPLIST_FILE = Config/Info.plist; CODE_SIGN_ENTITLEMENTS = Config/MeshCoreServicer.entitlements; CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = "-"; ENABLE_HARDENED_RUNTIME = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); GENERATE_INFOPLIST_FILE = NO; SWIFT_SERIALIZE_DEBUGGING_OPTIONS = NO; OTHER_SWIFT_FLAGS = ("$(inherited)", "-file-prefix-map", "$(SRCROOT)=/MeshCoreServicer", "-debug-prefix-map", "$(SRCROOT)=/MeshCoreServicer"); ONLY_ACTIVE_ARCH = YES; SWIFT_OPTIMIZATION_LEVEL = "-O"; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; DEPLOYMENT_POSTPROCESSING = YES; STRIP_INSTALLED_PRODUCT = YES; STRIP_STYLE = debugging; }; name = Release; };
+F37922C48DA5978D02C9E50E = { isa = XCConfigurationList; buildConfigurations = (E9B2E96ABC5F6856F2BE79CF, 5A8C91857F674E16E2724F47,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+0E8A3AD980EC179856012B7E = { isa = PBXNativeTarget; buildConfigurationList = F37922C48DA5978D02C9E50E; buildPhases = (BCE16DD0260827ECF338C787, 7561BFB015D8F536760CB671, 0189424A5A60FED329FA868E,); buildRules = (); dependencies = (); name = MeshCoreServicer; packageProductDependencies = (DE58E2B17C19600779694943, 25EB63F9B7B31BAF2B7D60EF,); productName = "MeshCore Servicer"; productReference = 38A007151ABE87CC01A5B6E9; productType = "com.apple.product-type.application"; };
+98F54143AB4E86B28C3AFEE0 = { isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = YES; LastUpgradeCheck = 1600; }; buildConfigurationList = 862894B703A6DEDF96A9DD6C; compatibilityVersion = "Xcode 14.0"; developmentRegion = cs; knownRegions = (cs,en,Base); mainGroup = 64292B1C2B2E13EAD8788FC8; packageReferences = (582681C2EAE02B3F3D399C0C, C840D118DAEAC8FCE5A8BBF6,); productRefGroup = FBDC4F23F93125BBEEAE800C; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E,); };
+}; rootObject = 98F54143AB4E86B28C3AFEE0; }

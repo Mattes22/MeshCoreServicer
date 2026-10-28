@@ -17,6 +17,9 @@ AllowSkipFiles off
 !include StrFunc.nsh
 ${UnStrStr}
 
+!ifndef APP_EXE
+!define APP_EXE "MeshCoreServicer.exe"
+!endif
 !define PRODUCT "MeshCore Servicer"
 !define ARP "Software\Microsoft\Windows\CurrentVersion\Uninstall\MeshCoreServicer"
 Name "${PRODUCT} ${APP_VERSION} (${ARCH})"
@@ -126,7 +129,7 @@ Section "Aplikace, runtime a nabídka Start" MainSection
   WriteRegStr HKCU "${ARP}" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKCU "${ARP}" "Architecture" "${ARCH}"
   WriteRegStr HKCU "${ARP}" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKCU "${ARP}" "DisplayIcon" "$INSTDIR\MeshCoreServicer.exe"
+  WriteRegStr HKCU "${ARP}" "DisplayIcon" "$INSTDIR\${APP_EXE}"
   WriteRegStr HKCU "${ARP}" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
   WriteRegStr HKCU "${ARP}" "QuietUninstallString" '$\"$INSTDIR\Uninstall.exe$\" /S'
   WriteRegDWORD HKCU "${ARP}" "NoModify" 1
@@ -137,7 +140,7 @@ Section "Aplikace, runtime a nabídka Start" MainSection
   IfErrors install_failed
   SetOutPath "$INSTDIR"
   CreateDirectory "$SMPROGRAMS\MeshCore Servicer"
-  CreateShortcut "$SMPROGRAMS\MeshCore Servicer\MeshCore Servicer.lnk" "$INSTDIR\MeshCoreServicer.exe"
+  CreateShortcut "$SMPROGRAMS\MeshCore Servicer\MeshCore Servicer.lnk" "$INSTDIR\${APP_EXE}"
   CreateShortcut "$SMPROGRAMS\MeshCore Servicer\Odinstalovat.lnk" "$INSTDIR\Uninstall.exe"
   IfErrors install_failed
   Goto install_done
@@ -150,7 +153,7 @@ install_failed:
 install_done:
 SectionEnd
 Section /o "Zástupce na ploše" DesktopSection
-  CreateShortcut "$DESKTOP\MeshCore Servicer.lnk" "$INSTDIR\MeshCoreServicer.exe"
+  CreateShortcut "$DESKTOP\MeshCore Servicer.lnk" "$INSTDIR\${APP_EXE}"
 SectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${MainSection} "Aplikace ${APP_VERSION} (${ARCH}), potřebný .NET runtime, odinstalátor a zástupci v nabídce Start. Instalace pouze pro váš účet."
@@ -161,7 +164,7 @@ Function LaunchApplication
   System::Call 'kernel32::CloseHandle(p $MaintenanceMutex)'
   StrCpy $MaintenanceMutex 0
   SetOutPath "$INSTDIR"
-  ExecShell "open" "$INSTDIR\MeshCoreServicer.exe"
+  ExecShell "open" "$INSTDIR\${APP_EXE}"
 FunctionEnd
 
 Function un.onInit

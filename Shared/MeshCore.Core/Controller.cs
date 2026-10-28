@@ -9,7 +9,7 @@ public record ConsoleLine(DateTimeOffset Date, string Node, string Command, stri
 public record LogEvent(DateTimeOffset Date, string Category);
 public sealed partial class Controller : Observable
 {
-    public const string Version = "0.8.0";
+    public const string Version = "0.10.0";
     private readonly LocalStore store;
     private readonly ICredentialStore credentials;
     public readonly MeshSession Session;
@@ -23,6 +23,11 @@ public sealed partial class Controller : Observable
     public List<ChannelInfo> Channels { get; } = [];
     public List<ConsoleLine> Console { get; } = [];
     public List<LogEvent> Log { get; } = [];
+    private readonly IBleDiagnosticsSource? diagnosticSource;
+    private readonly IUsbDiagnosticsSource? usbDiagnosticSource;
+    public string ConnectionImplementation => diagnosticSource?.ConnectionImplementation ?? BleConnectionFlow.Implementation;
+    public string ActiveTransport => usbDiagnosticSource?.ActiveTransport ?? "BLE companion";
+    public BleConnectionJournal ConnectionDiagnostics { get; private set; } = new();
     public Dictionary<string, DateTimeOffset> Verified { get; } = [];
     public Dictionary<string, string> DiscoveryInfo { get; } = [];
     public List<AccessEntry> Access { get; private set; } = [];
@@ -44,7 +49,7 @@ public sealed partial class Controller : Observable
     public bool Monitoring => Measurement?.Running == true;
     public DiagnosticMeasurement? Measurement { get; private set; }
     public ServiceRoute MeasurementRoute => Node is { } c ? Session.RouteFor(c.Key) : ServiceRoute.FloodOrUnknown;
-    public DiagnosticPlan MeasurementPlan => new(Math.Max(Options.DiagnosticMinutes, ServiceRouting.MinimumMinutes(MeasurementRoute)), Options.DiagnosticSamples, MeasurementRoute);
+    public DiagnosticPlan MeasurementPlan => new(Options.DiagnosticMinutes, Options.DiagnosticSamples, MeasurementRoute);
     public DateTimeOffset? NextMonitor => Measurement?.Next;
     private readonly TimeProvider measurementClock;
     public Contact? Node => Contacts.FirstOrDefault(c => c.Id == SelectedNode);
@@ -72,6 +77,8 @@ public sealed partial class Controller : Observable
         Session.ServiceProgress += text => { Progress = text; Update(); };
         Session.Event += Receive; Session.CliReply += ObserveCli; Session.Malformed += () => AddLog("Odmítnut neplatný rámec");
         transport.Disconnected += Disconnected;
+        diagnosticSource=transport as IBleDiagnosticsSource;usbDiagnosticSource=transport as IUsbDiagnosticsSource;
+        if (diagnosticSource != null) ConnectionDiagnostics=diagnosticSource.ConnectionDiagnostics;
     }
     public async Task Start() { Library = await store.Load("library.json", () => new LibraryDocument(), l => l.Validate()); Update(); }
     public async Task Flush() { await saving; }
@@ -85,7 +92,7 @@ public sealed partial class Controller : Observable
     private void Update() { Notify(null); Changed?.Invoke(); }
     private void AddLog(string category) { Log.Add(new(DateTimeOffset.UtcNow, category)); if (Log.Count > 2000) Log.RemoveAt(0); Update(); }
     public string Clean(string text) { foreach (var secret in secrets.Where(x => x.Length > 0)) text = text.Replace(secret, "[skryto]", StringComparison.Ordinal); return text; }
-    public async Task Run(string title, Func<Task> action, Func<bool>? serviceValid = null, bool preserveAdmin = true)
+    public async Task Run(string title, Func<Task> action, Func<bool>? serviceValid = null, bool preserveAdmin = true, bool propagateFailure = false)
     {
         if (Busy) { Error = "Probíhá jiná operace. Požadavek nebyl zařazen do fronty."; Update(); return; }
         Busy = true; Progress = title; Error = null; Update();
@@ -97,14 +104,15 @@ public sealed partial class Controller : Observable
         }
         catch (OperationCanceledException) when (serviceValid?.Invoke() == false) { Measurement?.Stop(); Progress = "Požadavek zastaven před odesláním"; }
         catch (ServiceOperationCancelledException) { Measurement?.Stop(); Progress = "Požadavek zastaven před odesláním"; }
-        catch (Exception e) { Error = Clean(e.Message); Progress = "Operace selhala"; Measurement?.Stop(); AddLog("Operace selhala; původní text chyby se neexportuje"); }
+        catch (Exception e) { Error = BleText.Error(e, Clean); Progress = "Operace selhala"; Measurement?.Stop(); AddLog("Operace selhala; původní text chyby se neexportuje"); if (propagateFailure) throw; }
         finally { if (scope) Session.EndServiceOperation(); Busy = false; Update(); }
     }
-    public async Task Initialize(ulong address, string? expectedIdentity = null)
+    public async Task Initialize(ulong address, string? expectedIdentity = null, bool propagateFailure = false)
     {
         await Run("Načítám lokální údaje companionu…", async () =>
         {
             var generation = epoch; await Session.Initialize();
+            if (generation != epoch) throw new IOException("Spojení se během inicializace změnilo.");
             if (Self == null || expectedIdentity != null && Self.Id != expectedIdentity) throw new MeshException("Identita companionu neodpovídá vybranému profilu. Odpojte jej a vyberte správné zařízení.");
             await Flush();
             var old = Archive?.Account;
@@ -117,14 +125,15 @@ public sealed partial class Controller : Observable
                 if (Library.Profiles.Count >= 32) throw new MeshException("Nejvýše 32 profilů; nejprve odstraňte nepoužívaný profil.");
                 profile = new() { Account = Self.Id, Options = JsonSerializer.Deserialize<DeviceOptions>(JsonSerializer.Serialize(Library.Defaults))! }; Library.Profiles.Add(profile);
             }
-            profile.Name = Self.Name; profile.BluetoothAddress = address; profile.LastConnected = DateTimeOffset.UtcNow; await SaveLibrary();
+            profile.Name = Self.Name; if(address != 0) profile.BluetoothAddress = address; profile.LastConnected = DateTimeOffset.UtcNow; await SaveLibrary();
             foreach (var record in Archive.Messages) { record.Ack = null; record.AckDeadline = null; if (record.Delivery is "Odesílám" or "Čekám na ACK") record.Delivery = "Výsledek neověřený po ukončení předchozí relace"; }
             accountReady = true;
             if (Device != null) await Session.Channels(Device.Channels);
             await Session.SyncMessages();
             if (generation != epoch) throw new IOException("Spojení se během inicializace změnilo.");
             Initialized = true; liveMessages = true; syncWanted = false; Persist(); AddLog("Načteny lokální informace a fronta; žádné LoRa vysílání nebylo spuštěno");
-        });
+        }, propagateFailure: propagateFailure);
+        if (propagateFailure && !Initialized) throw new MeshException("Místní inicializace companionu nebyla dokončena.");
     }
     public void Disconnected()
     {
@@ -132,7 +141,7 @@ public sealed partial class Controller : Observable
         SetupSteps.Clear(); SetupSummary = "Prvotní nastavení zatím nebylo načtené."; Firmware = Board = Clock = ""; TelemetryText = RegionText = "Nenačteno"; Status = null; StatusRead = null; Access.Clear(); Neighbours.Clear(); Verified.Clear(); DiscoveryInfo.Clear();
         foreach (var f in Settings) { f.Actual = null; f.Draft = ""; f.State = "Nenačteno"; f.ReadAt = null; }
         foreach (var m in Archive?.Messages ?? []) if (m.Delivery is "Odesílám" or "Čekám na ACK") { m.Delivery = "Výsledek neověřený po odpojení"; m.Ack = null; m.AckDeadline = null; }
-        Measurement?.Stop(); liveMessages = false; syncWanted = false; observations.Clear(); earlyAcks.Clear(); contactsWanted.Clear(); discoveryTag = null; Persist(); AddLog("BLE relace ukončena; správce a diagnostické měření zrušeny");
+        Measurement?.Stop(); liveMessages = false; syncWanted = false; observations.Clear(); earlyAcks.Clear(); contactsWanted.Clear(); discoveryTag = null; Persist(); AddLog("Transport resetován; správce a diagnostické měření zrušeny");
     }
     private void Receive(Frame frame)
     {

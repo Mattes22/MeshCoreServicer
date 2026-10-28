@@ -6,7 +6,6 @@ public enum ServiceRoute { Known, FloodOrUnknown }
 public static class ServiceRouting
 {
     public static ServiceRoute Classify(byte? path, int bytes = 64) => path is { } p && p != 255 && (p >> 6) < 3 && (p & 63) * ((p >> 6) + 1) <= bytes ? ServiceRoute.Known : ServiceRoute.FloodOrUnknown;
-    public static int MinimumMinutes(ServiceRoute route) => route == ServiceRoute.Known ? 30 : 60;
 }
 
 // Shared across all remote service commands and retained across BLE resets.
@@ -61,12 +60,22 @@ public sealed class ServiceTrafficGovernor
 
 public sealed record DiagnosticPlan
 {
+    public const int DefaultIntervalMinutes = 240, DefaultSamples = 3, MinimumIntervalMinutes = 180,
+        MaximumIntervalMinutes = 1440, MaximumSamples = 6, MaximumDurationMinutes = 1440;
+    public static string HoursText(int minutes) => $"{minutes / 60} h" + (minutes % 60 == 0 ? "" : $" {minutes % 60} min");
+    public static string HoursInput(int minutes) => ((decimal)minutes / 60).ToString("0.########", System.Globalization.CultureInfo.InvariantCulture);
+    public static int MinutesFromHours(string text)
+    {
+        if (!decimal.TryParse(text.Trim().Replace(',', '.'), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var hours) || hours < 3 || hours > 24)
+            throw new MeshException("Zadejte interval 3–24 hodin; lze použít desetinnou čárku nebo tečku.");
+        return (int)decimal.Round(hours * 60, 0, MidpointRounding.AwayFromZero);
+    }
     public int IntervalMinutes { get; }
     public int Samples { get; }
     public int DurationMinutes => IntervalMinutes * Samples;
-    public DiagnosticPlan(int intervalMinutes, int samples, ServiceRoute route)
+    public DiagnosticPlan(int intervalMinutes = DefaultIntervalMinutes, int samples = DefaultSamples, ServiceRoute route = ServiceRoute.FloodOrUnknown)
     {
-        if (intervalMinutes < ServiceRouting.MinimumMinutes(route) || intervalMinutes > 360 || samples is < 1 or > 6 || intervalMinutes * samples > 360) throw new MeshException($"Měření: interval nejméně {ServiceRouting.MinimumMinutes(route)} min, 1–6 vzorků, celkem nejvýše 6 hodin.");
+        if (intervalMinutes is < MinimumIntervalMinutes or > MaximumIntervalMinutes || samples is < 1 or > MaximumSamples || intervalMinutes * samples > MaximumDurationMinutes) throw new MeshException("Měření: interval 3–24 hodin, 1–6 vzorků, celkem nejvýše 24 hodin.");
         IntervalMinutes = intervalMinutes; Samples = samples;
     }
 }

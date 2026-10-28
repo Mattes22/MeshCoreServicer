@@ -55,6 +55,12 @@ Zvolte stabilní bundle identifier a vydavatelský tým. Skript zachovává hodn
 
 Testujte konečné DMG stažené přes prohlížeč na druhém/čistém Macu, včetně odpojeného internetu po stažení, přetažení do Aplikací, aktualizace, prvního spuštění, systémového Bluetooth oprávnění a přístupu k uloženým heslům. Automatické kontroly vydání nejsou skutečný test čerstvě stažené aplikace na jiném Macu ani test BLE. Běžné potvrzení prvního otevření a žádost o Bluetooth zůstávají součástí macOS.
 
-Aktuální skript je pro jednu staticky linkovanou aplikaci. Pokud projekt později získá frameworky, extension, XPC nebo přihlašovací helper, zastaví se a bude nutné doplnit podepisování vnořeného kódu od nejvnitřnější položky. Pro podpis nepoužívá plošné `codesign --deep`; parametr `--deep` používá jen pro ověření.
+Aktuální skript povoluje aplikaci s přibaleným Sparkle frameworkem a jeho výslovně kontrolovanými pomocnými komponentami. Pokud projekt získá další frameworky, extension, XPC nebo přihlašovací helper, zastaví se a bude nutné doplnit podepisování vnořeného kódu od nejvnitřnější položky. Pro podpis nepoužívá plošné `codesign --deep`; parametr `--deep` používá jen pro ověření.
 
 Primární zdroje: [Developer ID](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/), [vytváření identity v Xcode](https://developer.apple.com/documentation/xcode/sharing-your-teams-signing-certificates), [notarizace](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow), [balení a stapling](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution). Konkrétní syntaxi příkazů ověřujte také přes `xcrun notarytool --help` v použitém Xcode.
+
+
+Pro aktualizaci původní distribuce vždy při `prepare` zadejte
+`--bundle-id cz.zavadilmatej.meshcoreservicer`. Obecné `org.meshcoreservicer.app`
+ve veřejném Xcode projektu patří vlastním vývojovým sestavením, nikoli
+aktualizaci existujícího sandboxu. Podpis vyžaduje také sériové oprávnění USB.

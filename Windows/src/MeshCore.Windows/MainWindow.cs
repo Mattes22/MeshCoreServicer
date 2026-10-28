@@ -11,20 +11,30 @@ using System.Windows.Media;
 using System.Windows.Shell;
 using System.Windows.Threading;
 using MeshCore.Core;
+using MeshCore.Updates;
 using Microsoft.Win32;
 
 namespace MeshCore.Windows;
 
 public sealed partial class MainWindow : Window
 {
+    private static string ApplicationVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "vývojová";
     private readonly BleTransport ble;
     private readonly Controller model;
+    private readonly UsbTransport usb;
+    private readonly TransportRouter link;
+    private readonly UsbRepeaterController usbRepeater;
+    private bool usbConnecting;
+    private bool UsbRepeater => link.IsUsb && usb.Mode == UsbMode.Repeater;
+    private bool UsbBusy => usbConnecting || usbRepeater.Busy;
+    private readonly UpdateSession updates = new();
     private readonly ContentControl page = new();
     private readonly TextBlock header = UI.Text("Bez companionu", 12), status = UI.Text("Připraveno", 11), error = UI.Text("", 12);
     private readonly TextBlock sectionTitle = UI.Secondary("Připojení"), companionName = UI.Text("Companion odpojen", 12), companionHint = UI.Secondary("Vyberte Bluetooth zařízení", 10), repeaterName = UI.Text("", 13), repeaterAccess = UI.Secondary("Bez přihlášení", 11);
     private readonly TextBlock[] navigationCounts = new TextBlock[6];
     private Border? repeaterSummary, errorBanner;
     private Button? disconnectButton;
+    private TextBlock? connectionRoute;
     private const int MessagesSection = 2, RepeaterSection = 3;
     private readonly ProgressBar progress = new() { Height = 3, Width = 65, IsIndeterminate = true, Margin = new(0, 0, 10, 0) };
     private readonly ListBox navigation = new() { BorderThickness = new(0), FontSize = 15, Margin = new(6, 0, 6, 0) };
@@ -40,9 +50,10 @@ public sealed partial class MainWindow : Window
     private string? draftAccount;
     public MainWindow(bool verification = false)
     {
-        UI.Theme("Systém"); FontFamily = UI.Body; FontSize = 15; UseLayoutRounding = true; SnapsToDevicePixels = true; Title = "MeshCore Servicer · Windows"; Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Assets/AppIcon.ico")); Width = Math.Min(1440, SystemParameters.WorkArea.Width - 48); Height = Math.Min(960, SystemParameters.WorkArea.Height - 48); MinWidth = Math.Min(760, Width); MinHeight = Math.Min(540, Height); WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        UI.Theme("Systém"); FontFamily = UI.Body; FontSize = 15; UseLayoutRounding = true; SnapsToDevicePixels = true; Title = $"MeshCore Servicer {ApplicationVersion} · Windows"; Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Assets/AppIcon.ico")); Width = Math.Min(1440, SystemParameters.WorkArea.Width - 48); Height = Math.Min(960, SystemParameters.WorkArea.Height - 48); MinWidth = Math.Min(760, Width); MinHeight = Math.Min(540, Height); WindowStartupLocation = WindowStartupLocation.CenterScreen;
         SetResourceReference(BackgroundProperty, "AppBackground"); SetResourceReference(ForegroundProperty, "AppForeground");
-        ble = new(Dispatcher); model = new(ble, new CredentialStore(), new LocalStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MeshCoreServicer")));
+        ble = new(Dispatcher);usb=new(action=>Dispatcher.BeginInvoke(action));link=new(ble,usb); model = new(link, new CredentialStore(), new LocalStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MeshCoreServicer")));
+        usbRepeater=new(usb,model.Session);usbRepeater.Confirm=(title,body)=>Task.FromResult(Dialog.Ask(this,title,body));usb.Changed+=Refresh;usbRepeater.Changed+=Refresh;
         ble.PairingInteraction = request =>
         {
             if (request.Kind == "ProvidePin")
@@ -52,7 +63,7 @@ public sealed partial class MainWindow : Window
             var text = request.Kind == "DisplayPin" ? "Zadejte tento PIN na zařízení: " + request.Pin : request.Kind == "ConfirmPinMatch" ? "Souhlasí PIN na zařízení s údajem " + request.Pin + "?" : "Potvrďte systémové párování s vybraným companionem.";
             return Task.FromResult(Dialog.Ask(this, "Systémové párování Bluetooth", text) ? "potvrzeno" : null);
         };
-        model.Confirm = (title, body) => Task.FromResult(Dialog.Ask(this, title, body)); model.Changed += Refresh; ble.Changed += Refresh;
+        model.Confirm = (title, body) => Task.FromResult(Dialog.Ask(this, title, body)); model.Changed += Refresh; ble.Changed += Refresh; updates.Changed += Refresh;
         model.NotifyMessage += record =>
         {
             var account = model.Archive?.Account;
@@ -68,7 +79,7 @@ public sealed partial class MainWindow : Window
         };
         PreviewKeyDown += (_, e) => { if (Keyboard.Modifiers == ModifierKeys.Control && e.Key >= Key.D1 && e.Key <= Key.D6) { navigation.SelectedIndex = e.Key - Key.D1; e.Handled = true; } else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.OemComma) { navigation.SelectedIndex = 6; e.Handled = true; } };
         timer = new(TimeSpan.FromMilliseconds(700), DispatcherPriority.Background, async (_, _) => await Tick(), Dispatcher); timer.Stop();
-        if (!verification) Loaded += async (_, _) => { await model.Start(); UI.Theme(model.Library.Theme); ApplyInterfaceScale(); tray = new(ShowWindow, () => _ = Exit()); navigation.SelectedIndex = 0; timer.Start(); Refresh(); };
+        if (!verification) Loaded += async (_, _) => { await model.Start(); UI.Theme(model.Library.Theme); ApplyInterfaceScale(); tray = new(ShowWindow, () => _ = Exit()); navigation.SelectedIndex = 0; timer.Start(); Refresh(); UpdateSession.MarkStartupReady(); if (model.Library.CheckUpdates) _ = updates.Check(ApplicationVersion, quiet:true); };
         Activated += (_, _) => Reading(); Deactivated += (_, _) => { model.ReadingConversation = false; };
         StateChanged += (_, _) => Reading(); IsVisibleChanged += (_, _) => Reading();
         Closing += (_, e) => { if (!exiting) { e.Cancel = true; Hide(); model.ReadingConversation = false; } };
@@ -76,49 +87,56 @@ public sealed partial class MainWindow : Window
     }
     private void PreferencesChanged(object sender, UserPreferenceChangedEventArgs e) => Dispatcher.BeginInvoke(() => { if (model.Library.Theme == "Systém") UI.Theme("Systém"); });
     private void PowerChanged(object sender, PowerModeChangedEventArgs e) => Dispatcher.BeginInvoke(() =>
-    { if (e.Mode == PowerModes.Suspend) { sleeping = true; model.SetMonitoring(false); ble.Disconnect(); } else if (e.Mode == PowerModes.Resume) { sleeping = false; reconnectAt = DateTimeOffset.UtcNow.AddSeconds(3); } });
+    { if (e.Mode == PowerModes.Suspend) { sleeping = true; model.SetMonitoring(false); StopConnection(BleCloseReason.Sleep); } else if (e.Mode == PowerModes.Resume) { sleeping = false; reconnectAt = DateTimeOffset.UtcNow.AddSeconds(3); } });
     private void ShowWindow() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Activate(); Reading(); }
     private async Task Exit()
     {
         if (exiting) return;
-        if (model.Busy && !Dialog.Ask(this, "Ukončit probíhající operaci?", "Výsledek odeslaného požadavku může zůstat neověřený. Před opakováním znovu načtěte stav.")) return;
-        exiting = true; wantedAddress = null; timer.Stop(); ble.Dispose(); await model.Flush(); tray?.Dispose(); SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.UserPreferenceChanged -= PreferencesChanged; Close(); Application.Current.Shutdown();
+        if ((model.Busy || UsbBusy) && !Dialog.Ask(this, "Ukončit probíhající operaci?", "Výsledek odeslaného požadavku může zůstat neověřený. Před opakováním znovu načtěte stav.")) return;
+        exiting = true; wantedAddress = null; timer.Stop(); usb.Dispose();ble.Dispose(); await model.Flush(); tray?.Dispose(); SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.UserPreferenceChanged -= PreferencesChanged; Close(); Application.Current.Shutdown();
     }
+    private async Task BeforeUpdate() { wantedAddress = null; model.SetMonitoring(false); StopConnection(); await model.Flush(); }
+    private async Task QuitForUpdate() { exiting = true; timer.Stop(); usb.Dispose();ble.Dispose(); await model.Flush(); tray?.Dispose(); Close(); Application.Current.Shutdown(); }
     private void Reading() { model.ReadingConversation = navigation.SelectedIndex == MessagesSection && IsVisible && IsActive && WindowState != WindowState.Minimized; model.MarkRead(); }
     private async Task Invoke(Func<Task> action)
-    { try { await action(); } catch (Exception ex) { MessageBox.Show(this, model.Clean(ex.Message), "MeshCore Servicer", MessageBoxButton.OK, MessageBoxImage.Warning); } finally { Refresh(); } }
+    { try { await action(); } catch (Exception ex) { MessageBox.Show(this, BleText.Error(ex, model.Clean), "MeshCore Servicer", MessageBoxButton.OK, MessageBoxImage.Warning); } finally { Refresh(); } }
     private Button Action(string title, Func<Task> action, Func<bool>? enabled = null)
     { var button = UI.Button(title, () => Invoke(action), enabled); buttons.Add((button, enabled ?? (() => true))); return button; }
     private readonly List<(Button Button, Func<bool> Enabled)> buttons = [];
-    private bool Local => model.Initialized && !model.Busy && !model.Session.RequiresReconnect && !connecting;
+    private bool Local => !UsbBusy && !updates.Installing && model.Initialized && !model.Busy && !model.Session.RequiresReconnect && !connecting;
     private bool Admin => Local && model.Admin;
     private async Task Tick()
     {
-        if (exiting || sleeping || connecting || ble.IsPairing) return;
+        if (exiting || sleeping || connecting || ble.IsPairing || updates.Installing) return;
         if (wantedAddress != null && !ble.Ready && model.Options.AutoReconnect && DateTimeOffset.UtcNow >= reconnectAt)
         { reconnectAt = DateTimeOffset.UtcNow.AddSeconds(retrySeconds); retrySeconds = Math.Min(30, retrySeconds * 2); await Connect(wantedAddress.Value, expectedIdentity, true); }
         await Invoke(() => model.Tick());
+        if(model.Library.CheckUpdates)_ = updates.CheckIfDue(ApplicationVersion);
     }
     private async Task Connect(ulong address, string? identity, bool retry = false)
     {
-        if (connecting || ble.IsPairing || model.Busy) return; connecting = true; Refresh();
+        if (connecting || ble.IsPairing || model.Busy || UsbBusy) return;
+        wantedAddress=null;usb.Disconnect();link.SelectUsb(false);
+        connecting = true; Refresh(); Exception? failure = null;
         try
         {
-            await ble.Connect(address); await model.Initialize(address, identity);
-            if (!model.Initialized) { wantedAddress = null; ble.Disconnect(); return; }
+            await ble.Connect(address, () => model.Initialize(address, identity, propagateFailure: true));
             wantedAddress = address; expectedIdentity = model.Self!.Id; retrySeconds = 1; reconnectAt = DateTimeOffset.UtcNow.AddSeconds(2);
         }
         catch (Exception ex)
         {
-            ble.Disconnect(); if (!retry) { wantedAddress = null; MessageBox.Show(this, model.Clean(ex.Message), "Připojení se nezdařilo", MessageBoxButton.OK, MessageBoxImage.Warning); }
-            reconnectAt = DateTimeOffset.UtcNow.AddSeconds(retrySeconds);
+            // The flow has already cancelled waits and released native resources. A failed
+            // reconnect is not repeatedly queued by Tick; the user can explicitly retry.
+            wantedAddress = null; failure = ex;
         }
         finally { connecting = false; Refresh(); }
+        if (failure != null && !retry && !sleeping && !exiting && failure is not BleConnectionException { Failure.Reason: BleReason.Cancelled })
+            MessageBox.Show(this, BleText.Error(failure, model.Clean), "Připojení se nezdařilo", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
     private void Navigate()
     {
         buttons.Clear(); refreshPage = () => { }; model.ReadingConversation = false;
-        var content = navigation.SelectedIndex switch { 0 => ConnectionPage(), 1 => ContactsPage(), 2 => MessagesPage(), 3 => RepeaterPage(), 4 => ConsolePage(), 5 => DiagnosticsPage(), _ => PreferencesPage() };
+        var content = navigation.SelectedIndex switch { 0 => ConnectionPage(), 1 => ContactsPage(), 2 => MessagesPage(), 3 => UsbRepeater ? UsbRepeaterPage() : RepeaterPage(), 4 => UsbRepeater ? UsbRepeaterPage() : ConsolePage(), 5 => DiagnosticsPage(), _ => PreferencesPage() };
         var frame = new Border { Child = content, Padding = new(24), MaxWidth = navigation.SelectedIndex is 1 or 2 or 4 ? 1600 : 1440, HorizontalAlignment = HorizontalAlignment.Stretch };
         ScrollViewer viewport = new() { Content = frame, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         int section = navigation.SelectedIndex;
@@ -133,20 +151,21 @@ public sealed partial class MainWindow : Window
         try
         {
             if (draftAccount != model.Archive?.Account) { drafts.Clear(); draftAccount = model.Archive?.Account; }
-            header.Text = model.Initialized ? $"BLE  ●  {model.Self?.Name}  {model.Battery / 1000d:F2} V" : connecting ? "Připojuji companion…" : "BLE  ○  Bez companionu";
-            companionName.Text = model.Initialized ? model.Self?.Name ?? "Companion" : "Companion odpojen";
-            companionHint.Text = model.Initialized ? "Připojeno přes Bluetooth" : connecting ? "Připojuji…" : "Vyberte Bluetooth zařízení";
+            if(connectionRoute!=null)connectionRoute.Text=UsbRepeater?"USB → místní repeater":(link.IsUsb?"USB":"BLE")+" → companion · LoRa → repeater";
+            header.Text = link.IsUsb ? (UsbRepeater ? usbRepeater.Name : model.Self?.Name??"Companion")+" · "+usb.State : model.Initialized ? $"BLE  ●  {model.Self?.Name}  {model.Battery / 1000d:F2} V" : connecting ? "Připojuji companion…" : "BLE  ○  Bez companionu";
+            companionName.Text = UsbRepeater ? usbRepeater.Name : model.Initialized ? model.Self?.Name ?? "Companion" : "Companion odpojen";
+            companionHint.Text = link.IsUsb ? usb.State : model.Initialized ? "Připojeno přes Bluetooth" : connecting ? "Připojuji…" : "Vyberte Bluetooth zařízení";
             repeaterName.Text = model.Node?.Name ?? ""; repeaterAccess.Text = model.Admin ? "Správce ověřen" : "Bez přihlášení";
             if (repeaterSummary != null) repeaterSummary.Visibility = model.Node == null || LayoutPolicy.Compact(shell.ActualWidth) || shell.ActualHeight < 700 ? Visibility.Collapsed : Visibility.Visible;
             navigationCounts[1].Text = model.Contacts.Count == 0 ? "" : model.Contacts.Count.ToString(); navigationCounts[2].Text = model.Unread == 0 ? "" : model.Unread.ToString(); navigationCounts[3].Text = model.Settings.Any(f => f.Dirty) ? "●" : "";
-            if (disconnectButton != null) disconnectButton.IsEnabled = ble.Ready && !connecting;
-            status.Text = (connecting ? "Připojuji…" : model.Progress) + (model.Monitoring ? $" · měření: další {model.NextMonitor?.LocalDateTime:t}" : "");
-            progress.Visibility = model.Busy || connecting || ble.IsPairing ? Visibility.Visible : Visibility.Collapsed;
-            error.Text = model.Error ?? model.StorageError ?? "";
-            if (model.Session.RequiresReconnect && !error.Text.Contains("obnovte BLE", StringComparison.OrdinalIgnoreCase)) error.Text += "  Obnovte BLE relaci; zápis automaticky neopakujte.";
+            if (disconnectButton != null) disconnectButton.IsEnabled = ble.Ready || connecting || usb.Ready || usbConnecting;
+            status.Text = (updates.Plan != null ? "Dostupná aktualizace · Nastavení · " : "") + (UsbBusy ? usbRepeater.Progress : connecting ? "Připojuji…" : model.Progress) + (model.Monitoring ? $" · měření: další {model.NextMonitor?.LocalDateTime:t}" : "");
+            progress.Visibility = model.Busy || connecting || UsbBusy || ble.IsPairing ? Visibility.Visible : Visibility.Collapsed;
+            error.Text = (link.IsUsb ? usbRepeater.Error??usb.Error : ble.ConnectionError) ?? model.Error ?? model.StorageError ?? "";
+            if (model.Session.RequiresReconnect && !error.Text.Contains("obnovte spojení", StringComparison.OrdinalIgnoreCase)) error.Text += "  Obnovte spojení; zápis automaticky neopakujte.";
             if (errorBanner != null) errorBanner.Visibility = error.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-            refreshPage(); foreach (var b in buttons.ToArray()) b.Button.IsEnabled = b.Enabled();
-            Title = (model.Unread > 0 ? $"({model.Unread}) " : "") + "MeshCore Servicer · Windows";
+            refreshPage(); foreach (var b in buttons.ToArray()) b.Button.IsEnabled = !updates.Installing && b.Enabled();
+            Title = (model.Unread > 0 ? $"({model.Unread}) " : "") + $"MeshCore Servicer {ApplicationVersion} · Windows";
             TaskbarItemInfo ??= new(); TaskbarItemInfo.Description = model.Unread > 0 ? $"{model.Unread} nepřečtených zpráv" : "MeshCore Servicer";
             if (model.Unread > 0) { DrawingGroup draw = new(); using (var context = draw.Open()) { context.DrawEllipse(Brushes.Teal, null, new Point(8, 8), 8, 8); context.DrawEllipse(Brushes.White, null, new Point(8, 8), 3, 3); } TaskbarItemInfo.Overlay = new DrawingImage(draw); } else TaskbarItemInfo.Overlay = null;
         }

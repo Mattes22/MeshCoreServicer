@@ -149,3 +149,9 @@ Neověřený zápis známého nastavení může mít uloženou zamýšlenou hodn
 Diagnostický report používá konečný seznam kategorií událostí a extrakci čísel verzí, nikoliv původní řádky logu. Exportuje se zobrazený neměnný snímek. Ručně zadané výsledky hardware testů jsou samostatné uživatelské údaje, vázané také na firmware companionu, verzi aplikace, macOS a architekturu. Aplikace je nezaměňuje za automatické ověření a nic nikam neposílá.
 
 Aktuální audit vysílajících a místních operací, prodlevy a servisní rozpočet: [Provoz LoRa](docs/TRAFFIC_POLICY.md). Formát rámců ani opkódy se nemění.
+
+## USB od 0.10.0
+
+Companion binární USB obálka a přímé textové CLI repeateru jsou implementované
+odděleně; podrobnosti, přesné commity zdrojů a fyzické ověření jsou v
+[USB protokolu](../docs/USB.md). BLE používá dosavadní rámcování.

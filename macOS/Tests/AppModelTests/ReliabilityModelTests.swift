@@ -118,9 +118,30 @@ final class ReliabilityModelTests: XCTestCase {
     @MainActor func testMonitoringIsOptInWaitsFirstIntervalAndStopsOnSelectionChange() async throws {
         let (m,t,_) = try await fixture()
         XCTAssertFalse(m.monitoring); XCTAssertTrue(t.frames.isEmpty)
-        m.monitorIntervalMinutes = 5; m.setMonitoring(true); await Task.yield()
+        m.monitorIntervalMinutes = 240; m.setMonitoring(true); await Task.yield()
         XCTAssertTrue(m.monitoring); XCTAssertTrue(t.frames.isEmpty); XCTAssertNotNil(m.monitorNext)
         m.selectedID = "other"; XCTAssertFalse(m.monitoring); XCTAssertNil(m.monitorNext); XCTAssertTrue(t.frames.isEmpty)
+    }
+    @MainActor func testDefaultModelWaitsFourHoursAndCompletesAtTwelveWithoutExtraTraffic() async throws {
+        let (m,t,c) = try await fixture(); t.statusReply = statusData()
+        XCTAssertEqual(m.monitorIntervalMinutes,240); XCTAssertEqual(m.monitorSampleLimit,3)
+        m.setMonitoring(true); defer { m.stopMonitoring() }
+        let start = try XCTUnwrap(m.measurement?.start)
+        XCTAssertEqual(m.monitorNext,start.addingTimeInterval(4*3600))
+        await m.monitorTick(contact:c,now:start.addingTimeInterval(4*3600-1)); XCTAssertTrue(t.frames.isEmpty)
+        for hour in [4,8,12] { await m.monitorTick(contact:c,now:start.addingTimeInterval(Double(hour*3600))) }
+        XCTAssertFalse(m.monitoring); XCTAssertNil(m.monitorNext); XCTAssertEqual(m.measurement?.received,3)
+        XCTAssertEqual(t.frames.map{$0[0]},[27,27,27]); XCTAssertEqual(m.operations.current.samples.count,3)
+        await m.monitorTick(contact:c,now:start.addingTimeInterval(24*3600))
+        _ = m.operations.current.samples; XCTAssertEqual(t.frames.count,3)
+    }
+    @MainActor func testInvalidShortOrOverlongModelPlanCannotStart() async throws {
+        let (m,t,_) = try await fixture()
+        for (minutes,count) in [(179,3),(300,6),(1440,2)] {
+            m.monitorIntervalMinutes = minutes; m.monitorSampleLimit = count; m.setMonitoring(true)
+            XCTAssertFalse(m.monitoring); XCTAssertNil(m.measurement); XCTAssertNotNil(m.error)
+        }
+        XCTAssertTrue(t.frames.isEmpty)
     }
     @MainActor func testMonitorTickSkipsBusyAndStoresOnlyActualReply() async throws {
         let (m,t,c) = try await fixture(); t.statusReply = statusData()
@@ -169,7 +190,7 @@ final class ReliabilityModelTests: XCTestCase {
     }
     @MainActor func testDiagnosticLimitAndBusySlotsCannotCreateExtraRequests() async throws {
         let (m,t,c) = try await fixture(); t.statusReply = statusData(); m.monitorSampleLimit = 2
-        m.setMonitoring(true); XCTAssertEqual(m.measurement?.plan.intervalMinutes,60)
+        m.setMonitoring(true); XCTAssertEqual(m.measurement?.plan.intervalMinutes,240)
         m.busy = true; await m.monitorTick(contact:c,now:m.measurement!.next!)
         XCTAssertEqual(m.measurement?.skipped,1); m.busy = false
         await m.monitorTick(contact:c,now:m.measurement!.next!)

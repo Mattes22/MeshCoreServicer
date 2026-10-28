@@ -102,7 +102,6 @@ public sealed partial class Controller
         if (!Monitoring || Measurement is not { } run) return;
         if (!Admin || Node is not { Stored: true, Kind: 2 } c) { run.Stop(); Update(); return; }
         if (now < run.Started) { run.Stop(); Error = "Systémový čas se posunul zpět; spusťte nové měření až po opravě času."; Update(); return; }
-        if (MeasurementRoute == ServiceRoute.FloodOrUnknown && run.Plan.IntervalMinutes < 60) { run.Stop(); Error = "Trasa už není ověřená; nové měření bez trasy vyžaduje nejméně 60 minut."; Update(); return; }
         if (!run.TakeDue(now, Busy)) { Update(); return; }
         var generation = epoch;
         await Run("Diagnostické měření: žádám stav po LoRa…", async () =>
@@ -208,13 +207,24 @@ public sealed partial class Controller
         Library.Checks.Add(new(Archive.Account, SelectedNode, Device.Version + " / " + Device.Build, Firmware, Version, RuntimeInformation.OSDescription, RuntimeInformation.OSArchitecture.ToString(), test, result, DateTimeOffset.UtcNow)); Library.Checks = Library.Checks.TakeLast(256).ToList(); await SaveLibrary(); Update();
     }
     public static readonly string[] HardwareTests = ["BLE připojení a systémové párování", "Opětovné připojení a probuzení PC", "Kontakty a příjem advertu", "Přihlášení a načtení konfigurace", "Změna a zpětné ověření konfigurace", "DM a ACK", "Kanál a zachycené přeposílání", "Systémové oznámení", "Restart a synchronizace času"];
+    public string BleDiagnosticReport() => JsonSerializer.Serialize(new
+    {
+        Schema = 1, ConnectionImplementation, App = "MeshCore Servicer " + (OperatingSystem.IsLinux() ? "Linux " : "Windows ") + Version,
+        OSVersion = Environment.OSVersion.Version.ToString(), Architecture = RuntimeInformation.OSArchitecture.ToString(),
+        ProtocolReference = Codec.FirmwareCommit, Connected = Initialized || ActiveTransport == "USB repeater" && usbDiagnosticSource?.UsbConnected == true,
+        ActiveTransport, UsbConnection = usbDiagnosticSource?.UsbDiagnostics,
+        Events = ConnectionDiagnostics.Snapshot()
+    }, LocalStore.Json);
     public string DiagnosticReport() => JsonSerializer.Serialize(new
     {
-        App = "MeshCore Servicer Windows " + Version, ProtocolCommit = Codec.FirmwareCommit,
+        App = "MeshCore Servicer " + (OperatingSystem.IsLinux() ? "Linux " : "Windows ") + Version, ProtocolCommit = Codec.FirmwareCommit,
+        ConnectionImplementation,
         OS = RuntimeInformation.OSDescription, Architecture = RuntimeInformation.OSArchitecture.ToString(),
         CompanionProtocol = Device?.Protocol, CompanionFirmware = Device?.Version, CompanionBuild = Device?.Build,
-        Connected = Initialized, NeedsReconnect = Session.RequiresReconnect, StorageProblem = StorageError != null,
+        Connected = Initialized || ActiveTransport == "USB repeater" && usbDiagnosticSource?.UsbConnected == true, NeedsReconnect = Session.RequiresReconnect, StorageProblem = StorageError != null,
+        BleConnection = ConnectionDiagnostics.Snapshot(),
+        ActiveTransport, UsbConnection = usbDiagnosticSource?.UsbDiagnostics,
         Categories = Log.Select(l => new { l.Date, l.Category }),
-        HardwareTests = Library.Checks.Where(c => c.Account == Archive?.Account && c.Node == SelectedNode).Select(c => new { c.CompanionFirmware, c.RepeaterFirmware, c.App, c.Os, c.Architecture, c.Test, c.Result, c.Date })
+        HardwareTests = Library.Checks.Where(c => ActiveTransport != "USB repeater" && c.Account == Archive?.Account && c.Node == SelectedNode).Select(c => new { c.CompanionFirmware, c.RepeaterFirmware, c.App, c.Os, c.Architecture, c.Test, c.Result, c.Date })
     }, LocalStore.Json);
 }

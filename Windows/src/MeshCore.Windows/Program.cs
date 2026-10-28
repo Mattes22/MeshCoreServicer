@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Windows;
+using MeshCore.Core;
 
 namespace MeshCore.Windows;
 public static class Program
@@ -11,7 +12,7 @@ public static class Program
         using Mutex instance = new(true, "Local\\MeshCoreServicer.Windows", out bool first);
         if (!first) { MessageBox.Show("MeshCore Servicer už běží. Otevřete jej z oznamovací oblasti Windows.", "MeshCore Servicer"); return; }
         Application app = new() { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-        app.DispatcherUnhandledException += (_, e) => { MessageBox.Show("Operace aplikace selhala. Zkontrolujte spojení a před opakováním změny znovu načtěte stav zařízení.", "MeshCore Servicer"); e.Handled = true; };
+        app.DispatcherUnhandledException += (_, e) => { MessageBox.Show(BleText.Error(e.Exception), "MeshCore Servicer"); e.Handled = true; };
         app.Run(new MainWindow());
     }
 }

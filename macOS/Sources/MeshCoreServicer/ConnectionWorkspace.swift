@@ -5,13 +5,15 @@ struct ConnectionWorkspace: View {
     @ObservedObject var model: AppModel
     @ObservedObject var ble: BluetoothTransport
     var openContacts: () -> Void
+    var openUSB: () -> Void = {}
     var body: some View {
         WorkspaceScroll {
-            PageHeading(eyebrow:"Váš vstup do sítě",title:"Spojení začíná companionem",subtitle:"Vyberte MeshCore companion a spravujte repeatery přes LoRa.") { EmptyView() }
+            PageHeading(eyebrow:"Váš vstup do sítě",title:"Připojte companion nebo repeater",subtitle:"Companion přes BLE/USB pro LoRa síť, nebo přímá místní USB správa repeateru.") { EmptyView() }
             connectionCard
+            USBConnectionCard(model:model,usb:model.usb,openManagement:openUSB)
             linkPath
             CompanionProfilesView(model:model,library:model.library)
-            if ble.ready {
+            if model.linkReady {
                 LazyVGrid(columns:MeshTheme.columns,spacing:12) {
                     MetricTile(title:"Companion",value:model.selfInfo?.name ?? "Načítám…",symbol:"cpu",detail:model.deviceInfo?.model)
                     MetricTile(title:"Baterie companionu",value:model.battery.map { String(format:"%.3f V",Double($0)/1000) } ?? "—",symbol:"battery.75percent",detail:"Napětí hlášené companionem")
@@ -93,8 +95,8 @@ struct ConnectionWorkspace: View {
     private var linkPath: some View {
         HStack(spacing:0) {
             pathNode("desktopcomputer","Váš Mac","MeshCore Servicer",active:true)
-            pathConnector("BLE",active:ble.ready)
-            pathNode("cpu",ble.ready ? model.selfInfo?.name ?? ble.connectedName : "Companion",model.deviceInfo?.model ?? "Bluetooth companion",active:ble.ready)
+            pathConnector(model.linkLabel,active:model.linkReady)
+            pathNode("cpu",model.linkReady ? model.selfInfo?.name ?? ble.connectedName : "Companion",model.deviceInfo?.model ?? "Bluetooth companion",active:model.linkReady)
             pathConnector("LoRa",active:false)
             pathNode("antenna.radiowaves.left.and.right",model.selected?.name ?? "Repeater","Vzdálená správa",active:false)
         }.padding(.vertical,20).padding(.horizontal,24).background(.quaternary.opacity(0.4),in:RoundedRectangle(cornerRadius:14))

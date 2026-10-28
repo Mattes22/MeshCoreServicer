@@ -15,7 +15,7 @@ SOURCE_DIRS = ('src', 'tests', 'installer', 'ThirdParty', 'scripts', 'docs')
 REPO_NAME = 'MeshCoreServicer-' + PLATFORM
 ZIP_NAME = REPO_NAME + '-source.zip'
 EXCLUDED = {'.git', '.DS_Store', '.swiftpm', '.build', 'build', 'dist', 'out', 'bin', 'obj',
-            'DerivedData', 'xcuserdata', '.vs', '__pycache__'}
+            'DerivedData', 'xcuserdata', '.vs', '__pycache__', '.release-secrets'}
 PRIVATE_SUFFIXES = {'.p12', '.pfx', '.p8', '.pem', '.key', '.cer', '.keychain', '.keychain-db',
                     '.mobileprovision', '.provisionprofile'}
 SKIP_SUFFIXES = {'.pyc', '.xcuserstate', '.user', '.suo'}
@@ -75,6 +75,27 @@ def prepare(root, output):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(public_data(relative, file.read_bytes()))
             shutil.copymode(file, target)
+        # Export the platform-neutral projects required by this Windows tree.
+        shared = root.parent / 'Shared'
+        refs = list((repo / 'src').rglob('*.csproj')) + list((repo / 'tests').rglob('*.csproj'))
+        needs_shared = any('Shared/' in file.read_text() for file in refs)
+        if needs_shared:
+            if not shared.is_dir():
+                raise ValueError('Missing sibling Shared directory; export from the complete 0.9.0 repository.')
+            for file in sorted(shared.rglob('*')):
+                relative = file.relative_to(shared)
+                if EXCLUDED.intersection(relative.parts) or file.suffix in SKIP_SUFFIXES:
+                    continue
+                if file.is_file() or file.is_symlink():
+                    if file.is_symlink() or file.suffix in PRIVATE_SUFFIXES or file.name == ".env" or file.name.startswith(".env."):
+                        raise ValueError('Private file or link in Shared sources')
+                    target = repo / 'Shared' / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(public_data(relative, file.read_bytes()))
+            for file in refs:
+                file.write_text(file.read_text().replace('../../../Shared/', '../../Shared/'))
+            solution = repo / 'MeshCoreServicer.slnx'
+            solution.write_text(solution.read_text().replace('../Shared/', 'Shared/'))
         archive = staged / ZIP_NAME
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as output_zip:
             for file in sorted(repo.rglob('*')):

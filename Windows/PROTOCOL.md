@@ -79,3 +79,23 @@ RSSI ve statusu je síla posledního paketu přijatého **repeaterem**, s neurč
 - [Credential Manager](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credwritew), [oznámení Shell_NotifyIcon](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shell_notifyiconw).
 
 Servisní limity na hranici odeslání a konečné diagnostické plánování: [Provoz LoRa](docs/TRAFFIC_POLICY.md). Rámce, korelace a požadavek na MTU se nemění.
+
+## Oprava Windows BLE v 0.8.1
+
+Přesné UUID, WriteWithResponse, Notify a celé rámce zůstávají zachované.
+Zjištění MTU nově sleduje MaxPduSizeChanged (nejvýše 15 s); nativní fáze mají
+limit 20 s, místní inicializace 2 min a celý pokus 3 min. WinRT operace může
+doběhnout později: výsledek se nepřevezme do nového spojení a zdroj se uvolní.
+CCCD WithResult uchovává GATT status i ProtocolError.
+Podrobnosti, primární dokumentace Windows a známé omezení přísného MTU prahu
+u ESP32 jsou v [auditu BLE](docs/WINDOWS_BLE.md). Bez záznamu skutečného
+MTU se toto omezení nepovažuje za příčinu hlášeného selhání T-Deck Plus.
+Hlášení bylo upřesněno na Wadamesh beta bez přesného čísla sestavení.
+Zkontrolovaný Wadamesh transport na rozdíl od základního ESP32 kódu nastavuje
+MTU na 179; připnuté zdroje a meze tohoto zjištění uvádí audit.
+
+## USB od 0.10.0
+
+Companion binární USB obálka a přímé textové CLI repeateru jsou implementované
+odděleně; podrobnosti, přesné commity zdrojů a fyzické ověření jsou v
+[USB protokolu](../docs/USB.md). BLE používá dosavadní rámcování.

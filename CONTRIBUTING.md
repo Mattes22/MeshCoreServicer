@@ -15,6 +15,10 @@ Kontroly z kořene repozitáře:
 python3 -m unittest discover -s macOS/scripts -p 'test_*.py'
 python3 -m unittest discover -s Windows/scripts -p 'test_*.py'
 python3 -m unittest discover -s Windows/installer -p 'test_*.py'
+python3 -m unittest discover -s Linux/packaging -p 'test_*.py'
+python3 -m unittest discover -s tools -p 'test_*.py'
+dotnet run --project Shared/tests/MeshCore.Updates.Tests -c Release
+dotnet run --project Linux/tests/MeshCore.Linux.Tests -c Release
 ```
 
 Na macOS navíc `swift test --package-path macOS`. Pro Windows z adresáře `Windows` spusťte
@@ -26,3 +30,6 @@ které kontroly skutečně proběhly.
 Vlastní příspěvky poskytujte pod MIT licencí projektu. U převzatých částí
 zachovejte jejich licenci a původ. Licence runtime komponent Windows jsou
 v `Windows/ThirdParty`.
+
+Sdílené .NET jádro patří do `Shared/MeshCore.Core`, transport a nativní UI
+do příslušné platformy. Podpisové klíče ani údaje notarizace do zdrojů nepatří.

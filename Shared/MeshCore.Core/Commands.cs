@@ -43,9 +43,9 @@ public static class Commands
             && double.TryParse(p[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var b) && new[] { 7.8, 10.4, 15.6, 20.8, 31.25, 41.7, 62.5, 125, 250, 500 }.Contains(b)
             && int.TryParse(p[2], out var sf) && sf is >= 5 and <= 12 && int.TryParse(p[3], out var cr) && cr is >= 5 and <= 8;
     }
-    public static void ValidateCommand(string text)
+    public static void ValidateCommand(string text, int maximum = 133)
     {
-        Codec.ValidateText(text); if (text.Any(c => c is '\r' or '\n')) throw new MeshException("Příkaz musí být jednořádkový.");
+        Codec.ValidateText(text,maximum); if (text.Any(c => c is '\r' or '\n')) throw new MeshException("Příkaz musí být jednořádkový.");
         if (Entry(text) is { Arguments.Length: > 0 } e)
         {
             var argument = text[e.Command.Length..].Trim();

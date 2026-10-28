@@ -8,8 +8,8 @@ public struct DevicePreferences: Codable, Equatable, Sendable {
     public var changes = false
     public var enterSends = true
     public var monitorMinutes = 15 // Legacy preference; never used to start or schedule diagnostics.
-    public var diagnosticMinutes = 30
-    public var diagnosticSamples = 3
+    public var diagnosticMinutes = DiagnosticPlan.defaultIntervalMinutes
+    public var diagnosticSamples = DiagnosticPlan.defaultSamples
     public init() {}
     enum CodingKeys: String, CodingKey { case autoReconnect, suggestions, help, history, changes, enterSends, monitorMinutes, diagnosticMinutes, diagnosticSamples }
     public init(from decoder: Decoder) throws {
@@ -21,8 +21,13 @@ public struct DevicePreferences: Codable, Equatable, Sendable {
         changes = try c.decodeIfPresent(Bool.self,forKey:.changes) ?? false
         enterSends = try c.decodeIfPresent(Bool.self,forKey:.enterSends) ?? true
         monitorMinutes = try c.decodeIfPresent(Int.self,forKey:.monitorMinutes) ?? 15
-        diagnosticMinutes = try c.decodeIfPresent(Int.self,forKey:.diagnosticMinutes) ?? 30
-        diagnosticSamples = try c.decodeIfPresent(Int.self,forKey:.diagnosticSamples) ?? 3
+        diagnosticMinutes = try c.decodeIfPresent(Int.self,forKey:.diagnosticMinutes) ?? DiagnosticPlan.defaultIntervalMinutes
+        diagnosticSamples = try c.decodeIfPresent(Int.self,forKey:.diagnosticSamples) ?? DiagnosticPlan.defaultSamples
+        // Idempotent value migration, also applied to every inactive profile on decode.
+        if diagnosticMinutes < DiagnosticPlan.minimumIntervalMinutes { diagnosticMinutes = DiagnosticPlan.defaultIntervalMinutes }
+        if (DiagnosticPlan.minimumIntervalMinutes...DiagnosticPlan.maximumIntervalMinutes).contains(diagnosticMinutes), (1...DiagnosticPlan.maximumSamples).contains(diagnosticSamples) {
+            diagnosticSamples = min(diagnosticSamples, DiagnosticPlan.maximumDurationMinutes / diagnosticMinutes)
+        }
     }
 }
 public struct CompanionProfile: Codable, Identifiable, Equatable, Sendable {

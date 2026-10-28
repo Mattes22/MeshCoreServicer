@@ -21,8 +21,9 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 APP_NAME = 'MeshCore Servicer.app'
 STATE_NAME = 'release-state.json'
-REQUIRED_ENTITLEMENTS = {'com.apple.security.app-sandbox': True, 'com.apple.security.device.bluetooth': True,
-                         'com.apple.security.files.user-selected.read-write': True}
+REQUIRED_ENTITLEMENTS = {'com.apple.security.app-sandbox': True, 'com.apple.security.device.bluetooth': True, 'com.apple.security.device.serial': True,
+                         'com.apple.security.files.user-selected.read-write': True, 'com.apple.security.network.client': True,
+                         'com.apple.security.temporary-exception.mach-lookup.global-name': ['$(PRODUCT_BUNDLE_IDENTIFIER)-spks', '$(PRODUCT_BUNDLE_IDENTIFIER)-spki']}
 
 
 def run(command, **kwargs):
@@ -70,6 +71,27 @@ def choose_identity(available, requested):
     return selected[0]
 
 
+def validate_sparkle_linkage(load_commands, dependencies):
+    # Validate the actual Mach-O, not only Xcode settings: a signed/notarized
+    # bundle can still abort in dyld before its entry point is reached.
+    paths = re.findall(r'cmd LC_RPATH\s+cmdsize \d+\s+path (.*?) \(offset \d+\)', load_commands)
+    if not {'@executable_path/../Frameworks', '@loader_path/../Frameworks'}.intersection(paths):
+        raise ValueError('Chybí přenositelná LC_RPATH cesta do Contents/Frameworks; Sparkle by při startu nebylo načteno.')
+    if '@rpath/Sparkle.framework/Versions/B/Sparkle (' not in dependencies:
+        raise ValueError('Aplikace není propojena s přibaleným Sparkle.framework.')
+
+
+def verify_runtime_linkage(app, binary):
+    framework = app / 'Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle'
+    if not framework.is_file() or app.resolve() not in framework.resolve().parents:
+        raise ValueError('Chybí binární knihovna Sparkle uvnitř aplikace.')
+    if set(capture(['lipo', '-archs', framework]).split()) != {'arm64', 'x86_64'}:
+        raise ValueError('Sparkle musí obsahovat obě architektury vydání.')
+    for architecture in ('arm64', 'x86_64'):
+        validate_sparkle_linkage(capture(['otool', '-arch', architecture, '-l', binary]),
+                                capture(['otool', '-arch', architecture, '-L', binary]))
+
+
 def app_info(app):
     with (app / 'Contents/Info.plist').open('rb') as file:
         info = plistlib.load(file)
@@ -80,12 +102,19 @@ def app_info(app):
     binary = app / 'Contents/MacOS' / info['CFBundleExecutable']
     if set(capture(['lipo', '-archs', binary]).split()) != {'arm64', 'x86_64'}:
         raise ValueError('Vydání musí obsahovat arm64 i x86_64.')
-    # The current app statically links MeshCoreKit and has no nested code. Fail
-    # closed if the project later gains helpers/frameworks: sign those inside-out.
-    for folder in ('Frameworks', 'PlugIns', 'XPCServices', 'Helpers', 'Library/LoginItems'):
+    # Sparkle is the only permitted nested framework; all its executable pieces
+    # are signed inside-out below. Unknown injected code fails closed.
+    for folder in ('PlugIns', 'XPCServices', 'Helpers', 'Library/LoginItems'):
         location = app / 'Contents' / folder
         if location.exists() and any(location.iterdir()):
-            raise ValueError('Nový vnořený kód vyžaduje samostatné podepisování: ' + folder)
+            raise ValueError('Neočekávaný vnořený kód: ' + folder)
+    framework = app / 'Contents/Frameworks'
+    if not framework.is_dir() or {p.name for p in framework.iterdir()} != {'Sparkle.framework'}:
+        raise ValueError('Vydání musí obsahovat právě Sparkle.framework.')
+    for relative in ('Autoupdate','Updater.app','XPCServices/Installer.xpc','XPCServices/Downloader.xpc'):
+        if not (framework / 'Sparkle.framework/Versions/B' / relative).exists():
+            raise ValueError('Neúplná distribuce Sparkle: ' + relative)
+    verify_runtime_linkage(app, binary)
     return info
 
 
@@ -100,12 +129,15 @@ def verify_signature(app, team=None):
         raise ValueError('Podpis neodpovídá týmu vydání.')
     data = run(['codesign', '--display', '--entitlements', ':-', app], stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
     entitlements = plistlib.loads(data)
-    validate_entitlements(entitlements)
+    validate_entitlements(entitlements, app_info(app)['CFBundleIdentifier'])
     return match.group(1)
 
 
-def validate_entitlements(entitlements):
-    if entitlements != REQUIRED_ENTITLEMENTS:
+def validate_entitlements(entitlements, bundle_id=None):
+    expected = dict(REQUIRED_ENTITLEMENTS)
+    if bundle_id:
+        expected['com.apple.security.temporary-exception.mach-lookup.global-name'] = [bundle_id + '-spks', bundle_id + '-spki']
+    if entitlements != expected:
         raise ValueError('Oprávnění se liší od očekávaného sandbox/Bluetooth/user-selected files. Zkontrolujte je před distribucí.')
 
 
@@ -116,7 +148,7 @@ def verify_artifact(work, state, key):
     return artifact
 
 
-def prepare(work):
+def prepare(work, bundle_id=None):
     if work.exists() and any(work.iterdir()):
         raise ValueError('Pracovní složka není prázdná. Pro nové sestavení použijte jiné --work; staré vydání se nemaže.')
     work.mkdir(parents=True, exist_ok=True)
@@ -126,7 +158,7 @@ def prepare(work):
         run(['xcodebuild', '-project', ROOT / 'MeshCoreServicer.xcodeproj', '-scheme', 'MeshCoreServicer', '-configuration', 'Release',
              '-destination', 'generic/platform=macOS', '-archivePath', archive, '-derivedDataPath', work / 'DerivedData',
              'ARCHS=arm64 x86_64', 'ONLY_ACTIVE_ARCH=NO', 'CODE_SIGNING_ALLOWED=NO', 'CODE_SIGNING_REQUIRED=NO',
-             'CODE_SIGN_IDENTITY=', 'CODE_SIGN_STYLE=Manual', 'DEVELOPMENT_TEAM=', 'archive'], stdout=log, stderr=subprocess.STDOUT)
+             'CODE_SIGN_IDENTITY=', 'CODE_SIGN_STYLE=Manual', 'DEVELOPMENT_TEAM=', *(['PRODUCT_BUNDLE_IDENTIFIER=' + bundle_id] if bundle_id else []), 'archive'], stdout=log, stderr=subprocess.STDOUT)
     app = archive / 'Products/Applications' / APP_NAME
     info = app_info(app)
     save_state(work, {'schema': 1, 'phase': 'prepared', 'version': info['CFBundleShortVersionString'], 'bundle_id': info['CFBundleIdentifier'],
@@ -144,8 +176,27 @@ def sign(work, requested):
         raise ValueError('Podepisovaná kopie už existuje. Použijte nové pracovní vydání.')
     run(['ditto', work / state['archive'] / 'Products/Applications' / APP_NAME, app])
     app_info(app)
-    run(['codesign', '--force', '--sign', fingerprint, '--options', 'runtime', '--timestamp',
-         '--entitlements', ROOT / 'Config/MeshCoreServicer.entitlements', app])
+    sparkle = app / 'Contents/Frameworks/Sparkle.framework'
+    base = sparkle / 'Versions/B'
+    # Preserve Sparkle's reviewed helper sandbox entitlements; never use --deep
+    # for signing, and never disable library validation on the host application.
+    for relative in ('XPCServices/Downloader.xpc','XPCServices/Installer.xpc','Autoupdate','Updater.app'):
+        component = base / relative
+        entitlement_data = run(['codesign','--display','--entitlements',':-',component],stdout=subprocess.PIPE,stderr=subprocess.PIPE).stdout
+        command = ['codesign','--force','--sign',fingerprint,'--options','runtime','--timestamp']
+        with tempfile.TemporaryDirectory() as temp:
+            if entitlement_data:
+                plistlib.loads(entitlement_data)
+                path = Path(temp) / 'helper.plist'; path.write_bytes(entitlement_data)
+                command += ['--entitlements',path]
+            run([*command,component])
+    run(['codesign','--force','--sign',fingerprint,'--options','runtime','--timestamp',sparkle])
+    info = app_info(app)
+    entitlements = dict(REQUIRED_ENTITLEMENTS)
+    entitlements['com.apple.security.temporary-exception.mach-lookup.global-name'] = [info['CFBundleIdentifier']+'-spks',info['CFBundleIdentifier']+'-spki']
+    with tempfile.TemporaryDirectory() as temp:
+        path=Path(temp)/'app.plist';path.write_bytes(plistlib.dumps(entitlements))
+        run(['codesign','--force','--sign',fingerprint,'--options','runtime','--timestamp','--entitlements',path,app])
     team = verify_signature(app)
     zip_file = work / 'MeshCoreServicer-notarization.zip'
     run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', app, zip_file])
@@ -266,6 +317,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['check', 'prepare', 'sign', 'notarize', 'resume'])
     parser.add_argument('--work', type=Path, default=ROOT / 'build/macos-release')
+    parser.add_argument('--bundle-id', help='Override the generic source bundle identifier for a local Developer ID build')
     parser.add_argument('--identity', help='Developer ID Application SHA-1 fingerprint or full identity name')
     parser.add_argument('--keychain-profile', help='Named notarytool profile already stored in macOS Keychain')
     args = parser.parse_args()
@@ -277,7 +329,7 @@ def main():
         choose_identity(available, args.identity)
         print('Developer ID Application je dostupný. Přihlašovací údaje notarizace se tímto příkazem nečtou.')
     elif args.command == 'prepare':
-        prepare(work)
+        prepare(work, args.bundle_id)
     elif args.command == 'sign':
         sign(work, args.identity)
     else:

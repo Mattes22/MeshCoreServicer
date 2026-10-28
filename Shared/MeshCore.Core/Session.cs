@@ -9,7 +9,7 @@ public interface IMeshTransport
     int MaximumWriteLength => 176;
     Task WriteAsync(byte[] frame, CancellationToken cancellation = default);
 }
-public sealed class RequestRejectedException(byte code) : Exception($"Companion odmítl požadavek (kód {code}).");
+public sealed class RequestRejectedException(byte code) : Exception($"Companion odmítl požadavek (kód {code}).") { public byte Code { get; } = code; }
 public sealed class MeshSession : IDisposable
 {
     private readonly IMeshTransport transport;
@@ -25,6 +25,7 @@ public sealed class MeshSession : IDisposable
     public ServiceRoute RouteFor(byte[] key) { lock (sync) return routes.GetValueOrDefault(Convert.ToHexStringLower(key), ServiceRoute.FloodOrUnknown); }
     public void BeginServiceOperation(Func<bool> valid) => traffic.Begin(valid);
     public void EndServiceOperation() => traffic.End();
+    public Task ReserveDirectRadio(Action? progress=null) => traffic.Acquire(ServiceRoute.FloodOrUnknown, _ => progress?.Invoke(),serviceWait.Token);
     private readonly TimeSpan? remoteTimeout;
     private TaskCompletionSource<Frame>? pending;
     private Func<Frame, bool>? matching;
@@ -94,11 +95,11 @@ public sealed class MeshSession : IDisposable
         if (admittedRoute is { } route)
         {
             int before = generation; await traffic.Acquire(route, text => ServiceProgress?.Invoke(text), serviceWait.Token);
-            if (before != generation) throw new IOException("BLE relace se během čekání změnila; požadavek se neposlal.");
+            if (before != generation) throw new IOException("relace spojení se během čekání změnila; požadavek se neposlal.");
             if (ServiceRouteFor(bytes) != route) throw new MeshException("Trasa se během čekání změnila; požadavek se neposlal. Ověřte kontakt ručně.");
         }
         int preparedEpoch = generation; if (prepare != null) await prepare();
-        if (preparedEpoch != generation) throw new IOException("BLE relace se během přípravy změnila; požadavek se neposlal.");
+        if (preparedEpoch != generation) throw new IOException("relace spojení se během přípravy změnila; požadavek se neposlal.");
         if (admittedRoute != null) {
             if (ServiceRouteFor(bytes) != admittedRoute) throw new MeshException("Trasa se během přípravy změnila; požadavek se neposlal.");
             traffic.ValidateContext(); ClearRemote();
@@ -117,7 +118,7 @@ public sealed class MeshSession : IDisposable
         catch (Exception ex) when (ex is not RequestRejectedException)
         {
             lock (sync) { if (epoch == generation) RequiresReconnect = true; }
-            if (ex is OperationCanceledException) throw new TimeoutException("Vypršel čas odpovědi; výsledek není známý. Obnovte BLE relaci a nejprve čtěte stav.");
+            if (ex is OperationCanceledException) throw new TimeoutException("Vypršel čas odpovědi; výsledek není známý. Obnovte spojení a nejprve čtěte stav.");
             throw;
         }
         finally { serviceSending = false; lock (sync) { if (ReferenceEquals(pending, completion)) { pending = null; matching = null; } } }
@@ -129,7 +130,7 @@ public sealed class MeshSession : IDisposable
         {
             if (RequiresReconnect) throw new MeshException("Po timeoutu nelze bezpečně přiřadit další odpověď. Odpojte a znovu připojte companion; zápis neopakujte, nejprve načtěte stav.");
             int epoch = generation; var result = await action();
-            if (epoch != generation) throw new IOException("BLE relace se během požadavku změnila.");
+            if (epoch != generation) throw new IOException("relace spojení se během požadavku změnila.");
             return result;
         }
         finally { gate.Release(); }
@@ -148,19 +149,19 @@ public sealed class MeshSession : IDisposable
         var end = DateTimeOffset.UtcNow + (remoteTimeout ?? timeout); int epoch = generation;
         while (DateTimeOffset.UtcNow < end)
         {
-            if (epoch != generation) throw new IOException("BLE relace se změnila.");
+            if (epoch != generation) throw new IOException("relace spojení se změnila.");
             lock (sync) { var index = remote.FindIndex(f => predicate(f)); if (index >= 0) { var f = remote[index]; remote.RemoveAt(index); pacer.ReplyReceived(); return f; } }
             if (poll) await Drain();
             lock (sync) { var index = remote.FindIndex(f => predicate(f)); if (index >= 0) { var f = remote[index]; remote.RemoveAt(index); pacer.ReplyReceived(); return f; } }
             await Task.Delay(300);
         }
-        RequiresReconnect = true; throw new TimeoutException("Repeater neodpověděl v časovém limitu. Výsledek není známý; obnovte BLE relaci.");
+        RequiresReconnect = true; throw new TimeoutException("Repeater neodpověděl v časovém limitu. Výsledek není známý; obnovte spojení.");
     }
     private void ClearRemote() { lock (sync) remote.Clear(); }
     private async Task<uint> WaitRemoteSlot()
     {
         int epoch = generation; var timestamp = await pacer.Next();
-        if (epoch != generation) throw new IOException("BLE relace se během čekání změnila; požadavek nebyl odeslán.");
+        if (epoch != generation) throw new IOException("relace spojení se během čekání změnila; požadavek nebyl odeslán.");
         return timestamp;
     }
     private async Task<TimeSpan> Send(byte[] bytes, bool cli = false, Func<byte[]>? rebuild = null, Func<Task>? prepare = null)

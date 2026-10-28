@@ -8,7 +8,7 @@ import MeshCoreKit
     var body: some Scene {
         WindowGroup("MeshCore Servicer",id:"main") { MainAppWindow(model:model,lifecycle:lifecycle).frame(minWidth:1080,minHeight:740) }
             .defaultSize(width:1240,height:850)
-            .commands { CommandGroup(replacing:.newItem) {} }
+            .commands { CommandGroup(replacing:.newItem) {}; CommandGroup(after:.appInfo) { Button("Zkontrolovat aktualizace…") { model.updates.check() } } }
         Settings { AppSettingsView(model:model,preferences:model.preferences,notifications:model.notifications) }
     }
 }
@@ -20,6 +20,7 @@ private struct MainAppWindow: View {
         ContentView(model:model,ble:model.ble)
             .background(MainWindowProbe())
             .onAppear {
+                model.updates.start(model:model)
                 lifecycle.model = model; lifecycle.openingWindow = false; lifecycle.observe()
                 model.openMainWindow = { lifecycle.showWindow { openWindow(id:"main") } }
                 lifecycle.updatePresence()
@@ -52,7 +53,7 @@ private struct MainWindowProbe: NSViewRepresentable {
             observers.append(NotificationCenter.default.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in Task { @MainActor in await Task.yield(); self?.updatePresence() } })
         }
         let center = NSWorkspace.shared.notificationCenter
-        observers.append(center.addObserver(forName:NSWorkspace.willSleepNotification,object:nil,queue:.main) { [weak self] _ in Task { @MainActor in self?.model?.ble.prepareForSleep(); self?.model?.stopMonitoring(); self?.model?.messages.readingAllowed = false } })
+        observers.append(center.addObserver(forName:NSWorkspace.willSleepNotification,object:nil,queue:.main) { [weak self] _ in Task { @MainActor in self?.model?.usb.disconnect(); self?.model?.ble.prepareForSleep(); self?.model?.stopMonitoring(); self?.model?.messages.readingAllowed = false } })
         observers.append(center.addObserver(forName:NSWorkspace.didWakeNotification,object:nil,queue:.main) { [weak self] _ in Task { @MainActor in self?.model?.ble.resumeAfterWake(); self?.updatePresence() } })
         Task { await model?.notifications.refreshStatus() }
     }
@@ -62,7 +63,7 @@ private struct MainWindowProbe: NSViewRepresentable {
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let model else { return .terminateNow }
-        model.stopMonitoring(); model.ble.disconnect()
+        model.stopMonitoring(); model.disconnectAll()
         Task { await model.messages.flush(); await model.operations.flush(); sender.reply(toApplicationShouldTerminate:true) }
         return .terminateLater
     }
